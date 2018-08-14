@@ -231,12 +231,13 @@ def save_legend(mod, indices):
 	figlegend.savefig(mod.problemdir+'legend.pdf')
 
 def problem_str(name_problem):
-	return 'eps='+str(name_problem[5]) \
-			+'_sct='+str(name_problem[0]) \
+	return 'sct='+str(name_problem[0]) \
 			+'_scp='+str(name_problem[1]) \
 			+'_bct='+str(name_problem[2]) \
 			+'_bcp='+str(name_problem[3]) \
 			+'_ratio='+str(name_problem[4]) \
+			#'eps='+str(name_problem[5]) \
+			#		+
 
 def noise_type_str(noise_type):
 	if noise_type == 1:
@@ -424,8 +425,8 @@ def plot_all(mod, all_results):
 											  'corrupt_prob_warm_start',
 											  'corrupt_type_interaction',
 											  'corrupt_prob_interaction',
-											  'inter_ws_size_ratio',
-											  'epsilon'])
+											  'inter_ws_size_ratio'
+											  ])
 
 	#then group by dataset and warm_start size (corresponding to each point in cdf)
 	for name_problem, group_problem in grouped_by_problem:
@@ -507,7 +508,8 @@ def plot_all(mod, all_results):
 			#print result_table
 
 			new_size, new_unnormalized_result, new_lr = get_unnormalized_results(result_table)
-			if len(new_lr) != 4:
+			#print len(new_lr)
+			if len(new_lr) != 8:
 			 	continue
 
 			new_unnormalized_result[(0, 0, False, False, 1)] = get_maj_error(mod.maj_error_table, mod.name_dataset)
@@ -566,17 +568,19 @@ def load_from_sum(mod):
 	#print dss[168]
 
 	all_results = None
+	results_arr = []
 
 	print 'reading sum tables..'
 	for i in range(len(dss)):
 		print 'result file name: ', dss[i]
 		result = parse_sum_file(mod.results_dir + dss[i])
+		results_arr.append(result)
+		#if (i == 0):
+		#	all_results = result
+		#else:
+		#	all_results = all_results.append(result)
 
-		if (i == 0):
-			all_results = result
-		else:
-			all_results = all_results.append(result)
-
+	all_results = pd.concat(results_arr)
 	print all_results
 	mod.all_results = all_results
 
@@ -629,6 +633,7 @@ if __name__ == '__main__':
 	mod.cdf_on = True
 	mod.maj_error_dir = '../../../figs_all/expt_0509/figs_maj_errors/0of1.sum'
 	mod.best_error_dir = '../../../figs_all/expt_0606/0of1.sum'
+	mod.baseline_dir = '../../../figs_0729_-1_0/cache.h5'
 
 	mod.fulldir = mod.results_dir + mod.plot_subdir
 	if not os.path.exists(mod.fulldir):
@@ -667,7 +672,7 @@ if __name__ == '__main__':
 	all_results = all_results[(all_results['choices_lambda'] != 4)]
 
 
-	all_results = all_results[all_results['learning_rate'] < 1.5]
+	#all_results = all_results[all_results['learning_rate'] < 1.5]
 	#all_results = all_results[(all_results['corrupt_prob_interaction'] >= 0.49) & (all_results['inter_ws_size_ratio'] == 184.0) ]
 	# &	( (all_results['dataset'] == 'ds_1110_23.vw.gz') |
 	#	  (all_results['dataset'] == 'ds_1113_23.vw.gz') |
@@ -679,6 +684,18 @@ if __name__ == '__main__':
 	#if (alg_name[2] == False and alg_name[3] == False and alg_name[1] != 8):
 	#	pass
 	#else:
+	print 'reading baseline from hdf..'
+	store = pd.HDFStore(mod.baseline_dir)
+	mod.baseline_table = store['result_table']
+	store.close()
+	#ignore the sup-only experiments
+	mod.baseline_table = mod.baseline_table[(mod.baseline_table['warm_start_update'] == False) | (mod.baseline_table['interaction_update'] == True) ]
+	all_results = pd.concat([mod.baseline_table, all_results])
+	all_results = all_results[all_results['choices_lambda'] < 15.0 ]
+	all_results = all_results.reset_index()
+	print all_results
+	#all_results = pd.merge(all_results, mod.baseline_table)
+
 
 	mod.maj_error_table = parse_sum_file(mod.maj_error_dir)
 	mod.maj_error_table = mod.maj_error_table[mod.maj_error_table['majority_approx']]

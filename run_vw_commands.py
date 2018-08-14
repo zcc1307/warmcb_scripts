@@ -13,7 +13,7 @@ class model:
 	def __init__(self):
 		# Setting up argument-independent learning parameters in the constructor
 		self.baselines_on = True
-		self.algs_on = False
+		self.algs_on = True
 		self.optimal_on = False
 		self.majority_on = False
 
@@ -28,7 +28,7 @@ class model:
 
 		self.choices_cb_type = ['mtr']
 		#mod.choices_choices_lambda = [2,4,8]
-		self.choices_choices_lambda = [2,8,16]
+		self.choices_choices_lambda = [2,8]
 
 		#self.choices_cor_type_ws = [1,2,3]
 		#self.choices_cor_prob_ws = [0.0,0.5,1.0]
@@ -38,11 +38,11 @@ class model:
 		self.choices_cor_type_inter = [1]
 		self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5]
 
-		self.choices_loss_enc = [(-1, 0)]
+		self.choices_loss_enc = [(0, 1)]
 		#self.choices_cor_type_inter = [1,2]
 		#self.choices_cor_prob_inter = [0.0,0.5]
 
-		self.choices_epsilon = [0.05, 0.1]
+		self.choices_epsilon = [0.05]
 		#self.epsilon_on = True
 		#self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
 		self.choices_adf = [True]
@@ -144,16 +144,16 @@ def gen_vw_options(mod):
 		# Compute majority error; basically we would like to skip vw running as fast as possible
 		mod.vw_template = OrderedDict([('data',''),
 									   ('progress',2.0),
-									   ('cbify',0),
+									   ('warm_cb',0),
 									   ('warm_start',0),
 									   ('interaction',0)])
-		mod.param['cbify'] = mod.param['num_classes']
+		mod.param['warm_cb'] = mod.param['num_classes']
 		mod.param['warm_start'] = 0
 		mod.param['interaction'] = 0
 	else:
 		# General CB
 		mod.vw_template = OrderedDict([('data',''),
-									   ('cbify',0),
+									   ('warm_cb',0),
 									   ('cb_type','mtr'),
 									   ('warm_start',0),
 									   ('interaction',0),
@@ -177,7 +177,7 @@ def gen_vw_options(mod):
 
 		mod.param['warm_start'] = mod.param['warm_start_multiplier'] * mod.param['progress']
 		mod.param['interaction'] = mod.param['total_size'] - mod.param['warm_start']
-		mod.param['cbify'] = mod.param['num_classes']
+		mod.param['warm_cb'] = mod.param['num_classes']
 		mod.param['overwrite_label'] = mod.param['majority_class']
 
 		if mod.param['adf_on'] is True:
@@ -361,18 +361,13 @@ def params_per_task(mod):
 	prm_loss_enc = dictify(('loss0', 'loss1'), mod.choices_loss_enc)
 
 	# Common parameters
-	prm_com = param_cartesian_multi(
+
+	# Corruption parameters
+	prm_cor = param_cartesian_multi(
 	[prm_cor_type_ws,
 	 prm_cor_prob_ws,
 	 prm_cor_type_inter,
-	 prm_cor_prob_inter,
-	 prm_ws_multiplier,
-	 prm_lrs,
-	 prm_cb_type,
-	 prm_fold,
-	 prm_adf_on,
-	 prm_choices_eps,
-	 prm_loss_enc])
+	 prm_cor_prob_inter])
 
 	if mod.inter_gt_on:
 		fltr_inter_gt = lambda p: ((p['corrupt_type_interaction'] == 1 #noiseless for interaction data
@@ -383,8 +378,6 @@ def params_per_task(mod):
 	else:
 		fltr_inter_gt = lambda p: False
 
-	prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
-
 	if mod.ws_gt_on:
 		fltr_ws_gt = lambda p: ((p['corrupt_type_warm_start'] == 1 #noiseless for warm start data
 							and abs(p['corrupt_prob_warm_start']) < 1e-4)
@@ -394,19 +387,43 @@ def params_per_task(mod):
 	else:
 		fltr_ws_gt = lambda p: False
 
-	prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
+	#prm_cor_inter_gt = filter(fltr_inter_gt, prm_cor)
+	#prm_cor_ws_gt = filter(fltr_ws_gt, prm_cor)
 
-	prm_com = filter(lambda p: (fltr_ws_gt(p) or fltr_inter_gt(p)), prm_com)
+	prm_cor = filter(lambda p: (fltr_ws_gt(p) or fltr_inter_gt(p)), prm_cor)
+
+	prm_com_noeps = param_cartesian_multi(
+	[prm_cor,
+	 prm_ws_multiplier,
+	 prm_lrs,
+	 prm_cb_type,
+	 prm_fold,
+	 prm_adf_on,
+	 prm_loss_enc])
+
+	prm_com = param_cartesian(prm_com_noeps, prm_choices_eps)
+	prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
+	prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
 
 	# Baseline parameters construction
 	if mod.baselines_on:
-		prm_baseline_basic = \
+		prm_sup_only_basic = \
 		[
 			[
 				#Sup-Only
+				#TODO: make sure the epsilon=0 propagates
 		 		{'warm_start_type': 1,
 				 'warm_start_update': True,
-				 'interaction_update': False},
+				 'interaction_update': False,
+				 'epsilon': 0.0
+				 },
+			]
+		]
+
+		prm_oth_baseline_basic = \
+		[
+			[
+
 				#Band-Only
  		 		{'warm_start_type': 1,
  				 'warm_start_update': False,
@@ -432,7 +449,10 @@ def params_per_task(mod):
 				 'choices_lambda':1}
 			]
 		]
-		prm_baseline = param_cartesian_multi([prm_com] + prm_baseline_const + prm_baseline_basic)
+		prm_baseline = param_cartesian_multi([prm_com_noeps] + prm_baseline_const + prm_sup_only_basic)
+		#\
+		#param_cartesian_multi([prm_com] + prm_baseline_const + prm_oth_baseline_basic) + \
+
 	else:
 		prm_baseline = []
 
