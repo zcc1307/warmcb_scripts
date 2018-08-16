@@ -32,27 +32,20 @@ def sum_files(result_path):
 
 def parse_sum_file(sum_filename):
 	f = open(sum_filename, 'r')
-	#f.seek(0, 0)
 	table = pd.read_table(f, sep='\s+',lineterminator='\n',error_bad_lines=False)
-
 	return table
 
 def get_z_scores(errors_1, errors_2, sizes):
 	z_scores = []
 	for i in range(len(errors_1)):
-		#print i
 		z_scores.append( z_score(errors_1[i], errors_2[i], sizes[i]) )
 	return z_scores
 
 def z_score(err_1, err_2, size):
 	if (abs(err_1) < 1e-6 or abs(err_1) > 1-1e-6) and (abs(err_2) < 1e-6 or abs(err_2) > 1-1e-6):
 		return 0
-
-	#print err_1, err_2, size, sqrt( (err_1*(1 - err_1) + err_2*(1-err_2)) / size )
-
 	z = (err_1 - err_2) / sqrt( (err_1*(1 - err_1) + err_2*(1-err_2)) / size )
 	return z
-	#print z
 
 def is_significant(z):
 	if (stats.norm.cdf(z) < 0.05) or (stats.norm.cdf(z) > 0.95):

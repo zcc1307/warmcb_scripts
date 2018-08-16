@@ -14,7 +14,6 @@ class model:
 	def __init__(self):
 		pass
 
-#mod needs vw_output_filename
 def collect_learning_curve(mod):
 	f = open(mod.vw_output_filename, 'r')
 
@@ -67,7 +66,6 @@ def parse_all_filenames(mod):
 		filename_splitted = filename.split(',')
 		d['filename'].append(filename)
 		for item in filename_splitted:
-			#print item
 			item_splitted = item.split('=')
 			if len(item_splitted) == 2:
 				param_name, param_value = item_splitted
@@ -77,13 +75,6 @@ def parse_all_filenames(mod):
 
 		mod.vw_output_filename=filename
 		d['avg_error'].append(avg_error(mod))
-
-	#print d
-	#print d['filename']
-	#for k, v in d.iteritems():
-	#	print k, len(v)
-
-	#print mod.ds
 
 	results = pd.DataFrame(d)
 	results[['warm_start_type','choices_lambda']] = results[['warm_start_type','choices_lambda']].astype(int)
@@ -115,7 +106,6 @@ def problem_text(problem_param_values):
 def generate_figs_per_ds(mod):
 	os.chdir(mod.ds)
 	results = parse_all_filenames(mod)
-	#print results
 
 	problem_param_names = ['warm_start_multiplier', 'corrupt_type_supervised','corrupt_prob_supervised']
 	grouped_by_problem_setting = results.groupby(problem_param_names)
@@ -125,9 +115,6 @@ def generate_figs_per_ds(mod):
 		mod.problem_name = problem_str(problem_param_names, name_problem)
 		mod.problem_text = problem_text(name_problem)
 		print group_problem.shape[0]
-
-		#if group_problem.shape[0] != 35:
-		#	continue
 
 		alg_param_names = ['warm_start_type', 'choices_lambda', 'no_supervised', 'no_bandit']
 
@@ -145,32 +132,20 @@ def generate_figs_per_ds(mod):
 		for name_algorithm, group_problem_algorithm in grouped_by_algorithm:
 			# pick the best average learning rate here
 			# first compute the mean of all learning rates:
-			# print group_problem_algorithm
-			#print group_problem_algorithm.shape[0]
 			grouped_by_lr = group_problem_algorithm.groupby('learning_rate')
-			#print grouped_by_lr
 			lr_means = grouped_by_lr.mean()
-			#print lr_means
-			#print lr_means.shape[0]
-			#raw_input('...')
 			lr_means = lr_means.reset_index()
 			idx_min = lr_means['avg_error'].idxmin()
 			best_lr = lr_means.iloc[idx_min]['learning_rate']
 
-
 			group_problem_algorithm = group_problem_algorithm[group_problem_algorithm['learning_rate'] == best_lr]
 
 			weights = None
-			#print name_algorithm
-			#print group_problem_algorithm
-			#print group_problem_algorithm.shape[0]
 
 			mod.alg_name = alg_str(name_algorithm)
 			mod.alg_col, mod.alg_sty = alg_color_style(name_algorithm)
 			print mod.alg_name, mod.alg_col, mod.alg_sty
 			print best_lr, mod.ds
-			#raw_input(' ')
-			#raw_input('..')
 
 			#if mod.alg_name == 'Class-1' or mod.alg_name == 'AwesomeBandits with $|\Lambda|$=4':
 			#	continue
@@ -216,12 +191,9 @@ def generate_figs_per_ds(mod):
 				avg_losses_up = [avg_losses_mean[i] + avg_losses_ci[i] for i in range(len_x)]
 				avg_losses_down = [avg_losses_mean[i] - avg_losses_ci[i] for i in range(len_x)]
 				plt.fill_between(weights, avg_losses_down, avg_losses_up, color=mod.alg_col, linestyle=mod.alg_sty, alpha=0.2)
-				#
-
 
 			plt.xlim(0, num_bandit_cutoff)
 			indices.append(alg_index(name_algorithm))
-
 
 		print 'plotting for '+mod.problem_text+'...'
 		params={'legend.fontsize':15}
@@ -249,9 +221,6 @@ def go_over_dirs(mod):
 	os.chdir(mod.results_dir)
 	dss = sorted(glob.glob('*/'))
 	os.chdir(prevdir)
-
-	#print dss
-	#raw_input('..')
 
 	for ds in dss:
 		if ds == 'flag/':
