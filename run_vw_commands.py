@@ -28,7 +28,7 @@ class model:
 
 		self.choices_cb_type = ['mtr']
 		#mod.choices_choices_lambda = [2,4,8]
-		self.choices_choices_lambda = [2,8]
+		self.choices_choices_lambda = [2,8,16]
 
 		#self.choices_cor_type_ws = [1,2,3]
 		#self.choices_cor_prob_ws = [0.0,0.5,1.0]
@@ -36,13 +36,13 @@ class model:
 		self.choices_cor_prob_ws = [0.0]
 
 		self.choices_cor_type_inter = [1]
-		self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5]
+		self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5, 1.0]
 
 		self.choices_loss_enc = [(0, 1)]
 		#self.choices_cor_type_inter = [1,2]
 		#self.choices_cor_prob_inter = [0.0,0.5]
 
-		self.choices_epsilon = [0.05]
+		self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
 		#self.epsilon_on = True
 		#self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
 		self.choices_adf = [True]
@@ -411,7 +411,7 @@ def params_per_task(mod):
 		[
 			[
 				#Sup-Only
-				#TODO: make sure the epsilon=0 propagates
+				#TODO: make sure the epsilon=0 setting propagates
 		 		{'warm_start_type': 1,
 				 'warm_start_update': True,
 				 'interaction_update': False,
@@ -423,7 +423,6 @@ def params_per_task(mod):
 		prm_oth_baseline_basic = \
 		[
 			[
-
 				#Band-Only
  		 		{'warm_start_type': 1,
  				 'warm_start_update': False,
@@ -434,9 +433,12 @@ def params_per_task(mod):
  				 'interaction_update': True,
 				 'lambda_scheme': 1},
 				#Sim-Bandit with only warm-start update
-				{'warm_start_type': 2,
-				 'warm_start_update': True,
- 				 'interaction_update': False}
+				#(ideally, we need to set epsilon != 0 for the ws stage and epsilon = 0
+				#for the interaction stage, and it seems that we need to change warm_cb.cc:
+				#if interaction_update = False then we should use csoaa predict for interaction stage
+				#{'warm_start_type': 2,
+				# 'warm_start_update': True,
+ 				# 'interaction_update': False}
 			]
 		]
 
@@ -449,9 +451,8 @@ def params_per_task(mod):
 				 'choices_lambda':1}
 			]
 		]
-		prm_baseline = param_cartesian_multi([prm_com_noeps] + prm_baseline_const + prm_sup_only_basic)
-		#\
-		#param_cartesian_multi([prm_com] + prm_baseline_const + prm_oth_baseline_basic) + \
+		prm_baseline = param_cartesian_multi([prm_com_noeps] + prm_baseline_const + prm_sup_only_basic) \
+		+ param_cartesian_multi([prm_com] + prm_baseline_const + prm_oth_baseline_basic)
 
 	else:
 		prm_baseline = []

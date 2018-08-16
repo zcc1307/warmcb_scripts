@@ -16,6 +16,8 @@ from matplotlib.font_manager import FontProperties
 from collections import Counter
 import random
 
+pd.set_option('display.max_columns', 500)
+
 
 class model:
 	def __init__(self):
@@ -509,6 +511,7 @@ def plot_all(mod, all_results):
 
 			new_size, new_unnormalized_result, new_lr = get_unnormalized_results(result_table)
 			#print len(new_lr)
+
 			if len(new_lr) != 8:
 			 	continue
 
@@ -594,7 +597,7 @@ def filter_results(modm, all_results):
 	elif mod.filter == '2':
 		#print all_results['warm_start_size'] >= 100
 		#raw_input(' ')
-		all_results = all_results[all_results['warm_start'] >= 200]
+		all_results = all_results[all_results['warm_start'] >= 100]
 	elif mod.filter == '3':
 		all_results = all_results[all_results['num_classes'] >= 3]
 	elif mod.filter == '4':
@@ -684,16 +687,23 @@ if __name__ == '__main__':
 	#if (alg_name[2] == False and alg_name[3] == False and alg_name[1] != 8):
 	#	pass
 	#else:
+
+	#print 'large learning rates:'
+	#print all_results[all_results['choices_lambda'] > 15.0 ]
+	#raw_input('..')
+
+
 	print 'reading baseline from hdf..'
 	store = pd.HDFStore(mod.baseline_dir)
 	mod.baseline_table = store['result_table']
 	store.close()
 	#ignore the sup-only experiments
-	mod.baseline_table = mod.baseline_table[(mod.baseline_table['warm_start_update'] == False) | (mod.baseline_table['interaction_update'] == True) ]
+	mod.baseline_table = mod.baseline_table[(mod.baseline_table['warm_start_update'] == False) | (mod.baseline_table['interaction_update'] == True) | (mod.baseline_table['warm_start_type'] == 2.0) ]
 	all_results = pd.concat([mod.baseline_table, all_results])
 	all_results = all_results[all_results['choices_lambda'] < 15.0 ]
-	all_results = all_results.reset_index()
 	print all_results
+
+
 	#all_results = pd.merge(all_results, mod.baseline_table)
 
 
