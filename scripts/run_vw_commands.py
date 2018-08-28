@@ -9,40 +9,168 @@ import re
 from collections import OrderedDict
 
 
+RESULT_TEMPLATE = \
+	[
+	('fold', 'fd', 0),
+	('data', 'dt', ''),
+	('dataset', 'ds', ''),
+	('num_classes','nc', 0),
+	('total_size', 'ts', 0),
+	('majority_size','ms', 0),
+	('corrupt_type_warm_start', 'ctws', 0),
+	('corrupt_prob_warm_start', 'cpws', 0.0),
+	('corrupt_type_interaction', 'cti', 0),
+	('corrupt_prob_interaction', 'cpi', 0.0),
+	('adf_on', 'ao', True),
+	('warm_start_multiplier','wsm',1),
+	('warm_start', 'ws', 0),
+	('warm_start_type', 'wst', 0),
+	('interaction', 'bs', 0),
+	('inter_ws_size_ratio', 'iwsr', 0),
+	('cb_type', 'cbt', 'mtr'),
+	('validation_method', 'vm', 0),
+	('weighting_scheme', 'wts', 0),
+	('lambda_scheme', 'ls', 0),
+	('choices_lambda', 'cl', 0),
+	('warm_start_update', 'wsu', True),
+	('interaction_update', 'iu', True),
+	('learning_rate', 'lr', 0.0),
+	('optimal_approx', 'oa', False),
+	('majority_approx', 'ma', False),
+	('avg_error', 'ae', 0.0),
+	('actual_variance', 'av', 0.0),
+	('ideal_variance', 'iv', 0.0),
+	('last_lambda', 'll', 0.0),
+	('epsilon', 'eps', 0.0),
+	('loss0', 'l0', 0.0),
+	('loss1', 'l1', 0.0),
+	]
+
+VW_OUTPUT_TMPLT = \
+	['dataset',
+	 'fold',
+	 'lambda_scheme',
+	 'validation_method',
+	 'warm_start_multiplier',
+	 'corrupt_prob_interaction',
+	 'corrupt_prob_warm_start',
+	 'corrupt_type_interaction',
+	 'corrupt_type_warm_start',
+ 	 'warm_start_update',
+ 	 'interaction_update',
+	 'warm_start_type',
+	 'choices_lambda',
+	 'weighting_scheme',
+	 'cb_type',
+	 'optimal_approx',
+	 'majority_approx',
+	 'learning_rate',
+	 'adf_on',
+	 'epsilon',
+	 'loss0',
+	 'loss1']
+
+VW_RUN_TMPLT_OPT = \
+ 	[('data',''),
+	 ('progress',2.0),
+	 ('passes',0),
+	 ('oaa',0),
+	 ('cache_file','')]
+
+VW_RUN_TMPLT_MAJ = \
+	 [('data',''),
+	  ('progress',2.0),
+	  ('warm_cb',0),
+	  ('warm_start',0),
+	  ('interaction',0)]
+
+VW_RUN_TMPLT_WARMCB = \
+ 	[('data',''),
+	 ('warm_cb',0),
+	 ('cb_type','mtr'),
+	 ('warm_start',0),
+	 ('interaction',0),
+	 ('corrupt_type_interaction',0),
+	 ('corrupt_prob_interaction',0.0),
+	 ('corrupt_type_warm_start',0),
+	 ('corrupt_prob_warm_start',0.0),
+	 ('warm_start_update',True),
+	 ('interaction_update',True),
+	 ('choices_lambda',0),
+	 ('lambda_scheme',1),
+	 ('warm_start_type',1),
+	 ('overwrite_label',1),
+	 ('validation_method',1),
+	 ('weighting_scheme',1),
+	 ('learning_rate',0.5),
+	 ('epsilon', 0.05),
+	 ('loss0', 0),
+	 ('loss1', 0),
+	 ('progress',2.0)]
+
+#VW_PROGRESS_PATTERN = \
+# '\d+\s\d+\.\d+\n' +
+# '\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+.*'
+#float_pat = '\d+\.\d+'
+#int_pat = '\d+'
+foi_pat = '\d+(\.\d+)?'
+label_pat = '[a-zA-Z0-9]+'
+VW_PROGRESS_PATTERN = '('+label_pat+'\s+'+label_pat+'\s+'+label_pat+'\s+'+label_pat+'\n'+ \
+			'\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+\n)'
+
+#VW_PROGRESS_PATTERN = '(\n'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\n'+ \
+                  #foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+label_pat+'\s+'+label_pat+'\s+'+foi_pat+'\n)'
+
+VW_RESULT_TMPLT = \
+	{
+	'interaction': 0,
+	'inter_ws_size_ratio': 0,
+	'avg_error': 0.0,
+	'actual_variance': 0.0,
+	'ideal_variance': 0.0,
+	'last_lambda':0.0
+	}
+
 class model:
 	def __init__(self):
 		# Setting up argument-independent learning parameters in the constructor
 		self.baselines_on = True
+		self.sup_only_on = True
+		self.band_only_on = True
+		self.sim_bandit_on = False
+
 		self.algs_on = True
 		self.optimal_on = False
 		self.majority_on = False
 
-		self.ws_gt_on = True
-		self.inter_gt_on = False
+		self.ws_gt_on = False
+		self.inter_gt_on = True
 
 		self.num_checkpoints = 200
 
 		# use fractions instead of absolute numbers
+		#self.ws_multipliers = [pow(2,i) for i in range(4)]
 		self.ws_multipliers = [pow(2,i) for i in range(4)]
-		#self.ws_multipliers = [pow(2,i) for i in range(2)]
 
 		self.choices_cb_type = ['mtr']
 		#mod.choices_choices_lambda = [2,4,8]
-		self.choices_choices_lambda = [2,8,16]
+		self.choices_choices_lambda = [2,16]
 
 		#self.choices_cor_type_ws = [1,2,3]
 		#self.choices_cor_prob_ws = [0.0,0.5,1.0]
-		self.choices_cor_type_ws = [1]
-		self.choices_cor_prob_ws = [0.0]
+		self.choices_cor_type_ws = [1,2,3]
+		self.choices_cor_prob_ws = [0.0, 0.5, 1.0]
 
 		self.choices_cor_type_inter = [1]
-		self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5, 1.0]
+		self.choices_cor_prob_inter = [0.0]
+		#self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5, 1.0]
 
 		self.choices_loss_enc = [(0, 1)]
 		#self.choices_cor_type_inter = [1,2]
 		#self.choices_cor_prob_inter = [0.0,0.5]
 
-		self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
+		self.choices_epsilon = [0.05]
+		#self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
 		#self.epsilon_on = True
 		#self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
 		self.choices_adf = [True]
@@ -59,59 +187,50 @@ def gen_lr(n):
 	if n % 4 == 3:
 		return 0.01 * pow(10, -m)
 
-def collect_stats(mod):
-	avg_error_value = avg_error(mod)
-	actual_var_value = actual_var(mod)
-	ideal_var_value = ideal_var(mod)
+def collect_stats_maj_opt(mod):
+	vw_result = VW_RESULT_TMPLT.copy()
+	if 'optimal_approx' in mod.param:
+		# this condition is for computing the optimal error
+		vw_result['avg_error'] = avg_error(mod)
+	else:
+		# this condition is for computing the majority error
+		err =  1 - float(mod.param['majority_size']) / mod.param['total_size']
+		vw_result['avg_error'] = float('%0.5f' % err)
+	return vw_result
 
+def collect_stats(mod):
 	vw_run_results = []
-	vw_result_template = {
-	'interaction': 0,
-	'inter_ws_size_ratio': 0,
-	'avg_error': 0.0,
-	'actual_variance': 0.0,
-	'ideal_variance': 0.0
-	}
 
 	if 'majority_approx' in mod.param or 'optimal_approx' in mod.param:
-		vw_result = vw_result_template.copy()
-		if 'optimal_approx' in mod.param:
-			# this condition is for computing the optimal error
-			vw_result['avg_error'] = avg_error_value
-		else:
-			# this condition is for computing the majority error
-			err =  1 - float(mod.param['majority_size']) / mod.param['total_size']
-			vw_result['avg_error'] = float('%0.5f' % err)
-		vw_run_results.append(vw_result)
+		vw_run_results.append(collect_states_maj_opt(mod))
 		return vw_run_results
 
 	f = open(mod.vw_output_filename, 'r')
+	vw_output_text = f.read()
+	rgx = re.compile(VW_PROGRESS_PATTERN, flags=re.M)
+	matched = rgx.findall(vw_output_text)
 
-	i = 0
-	for line in f:
-		vw_progress_pattern = '\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+.*'
-		matchobj = re.match(vw_progress_pattern, line)
+	for mat in matched:
+		line = mat
+		s = line.split()
+		if len(s) >= 12:
+			s = s[:11]
 
-		if matchobj:
-			s = line.split()
-			if len(s) >= 8:
-				s = s[:7]
-			avg_loss_str, last_loss_str, counter_str, weight_str, curr_label_str, \
-			curr_pred_str, curr_feat_str = s
+		counter_new, last_lambda, actual_var, ideal_var, \
+		avg_loss, last_loss, counter, weight, curr_label, curr_pred, curr_feat = s
+		inter_effective = int(float(weight))
 
-			avg_loss = float(avg_loss_str)
-			inter_effective = int(float(weight_str))
-
-			for ratio in mod.critical_size_ratios:
-				if inter_effective >= (1 - 1e-7) * mod.param['warm_start'] * ratio and \
-				inter_effective <= (1 + 1e-7) * mod.param['warm_start'] * ratio:
-					vw_result = vw_result_template.copy()
-					vw_result['interaction'] = inter_effective
-					vw_result['inter_ws_size_ratio'] = ratio
-					vw_result['avg_error'] = avg_loss
-					vw_result['actual_variance'] = actual_var_value
-					vw_result['ideal_variance'] = ideal_var_value
-					vw_run_results.append(vw_result)
+		for ratio in mod.critical_size_ratios:
+			if inter_effective >= (1 - 1e-7) * mod.param['warm_start'] * ratio and \
+			inter_effective <= (1 + 1e-7) * mod.param['warm_start'] * ratio:
+				vw_result = VW_RESULT_TMPLT.copy()
+				vw_result['interaction'] = inter_effective
+				vw_result['inter_ws_size_ratio'] = ratio
+				vw_result['avg_error'] = float(avg_loss)
+				vw_result['actual_variance'] = float(actual_var)
+				vw_result['ideal_variance'] = float(ideal_var)
+				vw_result['last_lambda'] = float(last_lambda)
+				vw_run_results.append(vw_result)
 	f.close()
 
 	#if len(vw_run_results) >= 1:
@@ -132,49 +251,19 @@ def gen_vw_options_list(mod):
 def gen_vw_options(mod):
 	if 'optimal_approx' in mod.param:
 		# Fully supervised on full dataset
-		mod.vw_template = OrderedDict([('data',''),
-									   ('progress',2.0),
-									   ('passes',0),
-									   ('oaa',0),
-									   ('cache_file','')])
+		mod.vw_template = OrderedDict(VW_RUN_TMPLT_OPT)
 		mod.param['passes'] = 5
 		mod.param['oaa'] = mod.param['num_classes']
 		mod.param['cache_file'] = mod.param['data'] + '.cache'
 	elif 'majority_approx' in mod.param:
 		# Compute majority error; basically we would like to skip vw running as fast as possible
-		mod.vw_template = OrderedDict([('data',''),
-									   ('progress',2.0),
-									   ('warm_cb',0),
-									   ('warm_start',0),
-									   ('interaction',0)])
+		mod.vw_template = OrderedDict(VW_RUN_TMPLT_MAJ)
 		mod.param['warm_cb'] = mod.param['num_classes']
 		mod.param['warm_start'] = 0
 		mod.param['interaction'] = 0
 	else:
 		# General CB
-		mod.vw_template = OrderedDict([('data',''),
-									   ('warm_cb',0),
-									   ('cb_type','mtr'),
-									   ('warm_start',0),
-									   ('interaction',0),
-									   ('corrupt_type_interaction',0),
-									   ('corrupt_prob_interaction',0.0),
-									   ('corrupt_type_warm_start',0),
-									   ('corrupt_prob_warm_start',0.0),
-									   ('warm_start_update',True),
-									   ('interaction_update',True),
-									   ('choices_lambda',0),
-									   ('lambda_scheme',1),
-									   ('warm_start_type',1),
-									   ('overwrite_label',1),
-									   ('validation_method',1),
-									   ('weighting_scheme',1),
-									   ('learning_rate',0.5),
-									   ('epsilon', 0.05),
-									   ('loss0', 0),
-									   ('loss1', 0),
-   									   ('progress',2.0)])
-
+		mod.vw_template = OrderedDict(VW_RUN_TMPLT_WARMCB)
 		mod.param['warm_start'] = mod.param['warm_start_multiplier'] * mod.param['progress']
 		mod.param['interaction'] = mod.param['total_size'] - mod.param['warm_start']
 		mod.param['warm_cb'] = mod.param['num_classes']
@@ -220,30 +309,7 @@ def replace_keys(dic, simplified_keymap):
 def param_to_str_simplified(mod):
 	#print 'before replace'
 	#print param
-	vw_run_param_set = \
-	['dataset',
-	 'fold',
-	 'lambda_scheme',
-	 'validation_method',
-	 'warm_start_multiplier',
-	 'corrupt_prob_interaction',
-	 'corrupt_prob_warm_start',
-	 'corrupt_type_interaction',
-	 'corrupt_type_warm_start',
- 	 'warm_start_update',
- 	 'interaction_update',
-	 'warm_start_type',
-	 'choices_lambda',
-	 'weighting_scheme',
-	 'cb_type',
-	 'optimal_approx',
-	 'majority_approx',
-	 'learning_rate',
-	 'adf_on',
-	 'epsilon',
-	 'loss0',
-	 'loss1']
-
+	vw_run_param_set = VW_OUTPUT_TMPLT
 	mod.template_red = OrderedDict([(k,mod.result_template[k]) for k in vw_run_param_set])
 	#mod.simplified_keymap_red = dict([(k,mod.simplified_keymap[k]) for k in vw_run_param_set])
 	# step 1: use the above as a template to filter out irrelevant parameters
@@ -368,7 +434,56 @@ def params_per_task(mod):
 	 prm_cor_prob_ws,
 	 prm_cor_type_inter,
 	 prm_cor_prob_inter])
+	fltr_inter_gt, fltr_ws_gt = get_filters(mod)
+	prm_cor = filter(lambda p: (fltr_ws_gt(p) or fltr_inter_gt(p)), prm_cor)
 
+	prm_com_noeps = param_cartesian_multi(
+	[prm_cor,
+	 prm_ws_multiplier,
+	 prm_lrs,
+	 prm_cb_type,
+	 prm_fold,
+	 prm_adf_on,
+	 prm_loss_enc])
+
+	prm_com = param_cartesian(prm_com_noeps, prm_choices_eps)
+	prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
+	prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
+
+	prm_baseline = get_params_baseline(mod, prm_com, prm_com_noeps)
+	prm_alg = get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd)
+	prm_opt = get_params_opt(mod)
+	prm_maj = get_params_maj(mod)
+
+	#for p in params_common:
+	#	print p
+	#for p in params_baseline:
+	#	print p
+	#print len(prm_com_ws_gt), len(prm_algs_ws_gt)
+	#print len(prm_com_inter_gt), len(prm_algs_inter_gt)
+	#print len(prm_com)
+	#print len(prm_baseline)
+	#print len(prm_algs)
+	#raw_input('..')
+
+	# Common factor in all 3 groups: dataset
+	prm_all = param_cartesian_multi(
+	[prm_dataset,
+	 prm_baseline + prm_alg + prm_opt + prm_maj])
+
+	prm_all = sorted(prm_all,
+						key=lambda d: (d['dataset'],
+						               d['corrupt_type_warm_start'],
+									   d['corrupt_prob_warm_start'],
+									   d['corrupt_type_interaction'],
+									   d['corrupt_prob_interaction'])
+					 )
+	print 'The total number of VW commands to run is: ', len(prm_all)
+	for row in prm_all:
+		print row
+	return get_params_task(prm_all)
+
+def get_filters(mod):
 	if mod.inter_gt_on:
 		fltr_inter_gt = lambda p: ((p['corrupt_type_interaction'] == 1 #noiseless for interaction data
 								and abs(p['corrupt_prob_interaction']) < 1e-4)
@@ -387,112 +502,53 @@ def params_per_task(mod):
 	else:
 		fltr_ws_gt = lambda p: False
 
-	#prm_cor_inter_gt = filter(fltr_inter_gt, prm_cor)
-	#prm_cor_ws_gt = filter(fltr_ws_gt, prm_cor)
+	return (fltr_inter_gt, fltr_ws_gt)
 
-	prm_cor = filter(lambda p: (fltr_ws_gt(p) or fltr_inter_gt(p)), prm_cor)
-
-	prm_com_noeps = param_cartesian_multi(
-	[prm_cor,
-	 prm_ws_multiplier,
-	 prm_lrs,
-	 prm_cb_type,
-	 prm_fold,
-	 prm_adf_on,
-	 prm_loss_enc])
-
-	prm_com = param_cartesian(prm_com_noeps, prm_choices_eps)
-	prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
-	prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
-
-	# Baseline parameters construction
-	if mod.baselines_on:
-		prm_sup_only_basic = \
-		[
-			[
-				#Sup-Only
-				#TODO: make sure the epsilon=0 setting propagates
-		 		{'warm_start_type': 1,
-				 'warm_start_update': True,
-				 'interaction_update': False,
-				 'epsilon': 0.0
-				 },
-			]
-		]
-
-		prm_oth_baseline_basic = \
-		[
-			[
-				#Band-Only
- 		 		{'warm_start_type': 1,
- 				 'warm_start_update': False,
- 				 'interaction_update': True},
-				#Sim-Bandit
-				{'warm_start_type': 2,
-				 'warm_start_update': True,
- 				 'interaction_update': True,
-				 'lambda_scheme': 1},
-				#Sim-Bandit with only warm-start update
-				#(ideally, we need to set epsilon != 0 for the ws stage and epsilon = 0
-				#for the interaction stage, and it seems that we need to change warm_cb.cc:
-				#if interaction_update = False then we should use csoaa predict for interaction stage
-				#{'warm_start_type': 2,
-				# 'warm_start_update': True,
- 				# 'interaction_update': False}
-			]
-		]
-
-		prm_baseline_const = \
-		[
-			[
-				{'weighting_scheme':1,
-				 'adf_on':True,
-				 'lambda_scheme':3,
-				 'choices_lambda':1}
-			]
-		]
-		prm_baseline = param_cartesian_multi([prm_com_noeps] + prm_baseline_const + prm_sup_only_basic) \
-		+ param_cartesian_multi([prm_com] + prm_baseline_const + prm_oth_baseline_basic)
-
-	else:
-		prm_baseline = []
-
-
+def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 	# Algorithm parameters construction
 	if mod.algs_on:
 		# Algorithms for supervised validation
-		prm_ws_gt = \
-		[
-			 [
-		  	 	{'warm_start_update': True,
-				 'interaction_update': True,
-				 'warm_start_type': 1,
-				 'lambda_scheme': 2,
-				 'weighting_scheme': 2}
-			 ],
-			 [
-			 	{'validation_method':2},
-				{'validation_method':3}
-			 ]
-	    ]
+		if mod.ws_gt_on:
+			prm_ws_gt = \
+			[
+				 [
+			  	 	{'warm_start_update': True,
+					 'interaction_update': True,
+					 'warm_start_type': 1,
+					 'lambda_scheme': 2,
+					 'weighting_scheme': 2}
+				 ],
+				 [
+				 	{'validation_method':2},
+					{'validation_method':3}
+				 ]
+		    ]
+		else:
+			prm_ws_gt = [[]]
 
-		prm_inter_gt = \
-		[
-			 [
-		  	 	{'warm_start_update': True,
-				 'interaction_update': True,
-				 'warm_start_type': 1,
-				 'lambda_scheme': 4,
-				 'weighting_scheme': 1}
-			 ],
-		]
+		if mod.inter_gt_on:
+			prm_inter_gt = \
+			[
+				 [
+			  	 	{'warm_start_update': True,
+					 'interaction_update': True,
+					 'warm_start_type': 1,
+					 'lambda_scheme': 4,
+					 'weighting_scheme': 1}
+				 ],
+			]
+		else:
+			prm_inter_gt = [[]]
 
 		prm_algs_ws_gt = param_cartesian_multi([prm_com_ws_gt] + [prm_choices_lbd] + prm_ws_gt)
 		prm_algs_inter_gt = param_cartesian_multi([prm_com_inter_gt] + [prm_choices_lbd] + prm_inter_gt)
 		prm_algs = prm_algs_ws_gt + prm_algs_inter_gt
 	else:
 		prm_algs = []
+	return prm_algs
 
+
+def get_params_opt(mod):
 	# Optimal baselines parameter construction
 	if mod.optimal_on:
 		prm_optimal = \
@@ -506,7 +562,9 @@ def params_per_task(mod):
 	    ]
 	else:
 		prm_optimal = []
+	return prm_optimal
 
+def get_params_maj(mod):
 	if mod.majority_on:
 		prm_majority = \
 		[
@@ -519,36 +577,69 @@ def params_per_task(mod):
 		]
 	else:
 		prm_majority = []
+	return prm_majority
 
 
-	#for p in params_common:
-	#	print p
-	#for p in params_baseline:
-	#	print p
-	#print len(prm_com_ws_gt), len(prm_algs_ws_gt)
-	#print len(prm_com_inter_gt), len(prm_algs_inter_gt)
-	#print len(prm_com)
-	#print len(prm_baseline)
-	#print len(prm_algs)
-	#raw_input('..')
+def get_params_baseline(mod, prm_com, prm_com_noeps):
+	# Baseline parameters construction
+	if mod.baselines_on:
+		prm_sup_only_basic = [[]]
+		if mod.sup_only_on:
+			prm_sup_only_basic[0] += \
+				[
+					#Sup-Only
+					#TODO: make sure the epsilon=0 setting propagates
+			 		{'warm_start_type': 1,
+					 'warm_start_update': True,
+					 'interaction_update': False,
+					 'epsilon': 0.0
+					 }
+				]
 
-	# Common factor in all 3 groups: dataset
-	prm_all = param_cartesian_multi(
-	[prm_dataset,
+		prm_oth_baseline_basic = [[]]
+		if mod.band_only_on:
+			prm_oth_baseline_basic[0] += \
+				[
+					#Band-Only
+	 		 		{'warm_start_type': 1,
+	 				 'warm_start_update': False,
+	 				 'interaction_update': True}
+				]
 
-	 prm_baseline + prm_algs + prm_optimal + prm_majority])
+		if mod.sim_bandit_on:
+			prm_oth_baseline_basic[0] += \
+				[
+				#Sim-Bandit
+				{'warm_start_type': 2,
+				 'warm_start_update': True,
+					 'interaction_update': True,
+				 'lambda_scheme': 1}
+				]
 
-	prm_all = sorted(prm_all,
-						key=lambda d: (d['dataset'],
-						               d['corrupt_type_warm_start'],
-									   d['corrupt_prob_warm_start'],
-									   d['corrupt_type_interaction'],
-									   d['corrupt_prob_interaction'])
-					 )
-	print 'The total number of VW commands to run is: ', len(prm_all)
-	for row in prm_all:
-		print row
-	return get_params_task(prm_all)
+		#Sim-Bandit with only warm-start update
+		#(ideally, we need to set epsilon != 0 for the ws stage and epsilon = 0
+		#for the interaction stage, and it seems that we need to change warm_cb.cc:
+		#if interaction_update = False then we should use csoaa predict for interaction stage
+		#{'warm_start_type': 2,
+		# 'warm_start_update': True,
+		# 'interaction_update': False}
+
+		prm_baseline_const = \
+		[
+			[
+				{'weighting_scheme':1,
+				 'adf_on':True,
+				 'lambda_scheme':3,
+				 'choices_lambda':1}
+			]
+		]
+
+		prm_baseline = param_cartesian_multi([prm_com_noeps] + prm_baseline_const + prm_sup_only_basic) \
+		+ param_cartesian_multi([prm_com] + prm_baseline_const + prm_oth_baseline_basic)
+	else:
+		prm_baseline = []
+
+	return prm_baseline
 
 
 def get_params_task(params_all):
@@ -612,42 +703,8 @@ def main_loop(mod):
 	mod.summary_file_name = mod.results_path+str(mod.task_id)+'of'+str(mod.num_tasks)+'.sum'
 
 	# The reason for using a list is that, we would like to keep the order of the
-	#columns in this way. Maybe use ordered dictionary in the future?
-	mod.result_template_list = [
-	('fold', 'fd', 0),
-	('data', 'dt', ''),
-	('dataset', 'ds', ''),
-	('num_classes','nc', 0),
-	('total_size', 'ts', 0),
-	('majority_size','ms', 0),
-	('corrupt_type_warm_start', 'ctws', 0),
-	('corrupt_prob_warm_start', 'cpws', 0.0),
-	('corrupt_type_interaction', 'cti', 0),
-	('corrupt_prob_interaction', 'cpi', 0.0),
-	('adf_on', 'ao', True),
-	('warm_start_multiplier','wsm',1),
-	('warm_start', 'ws', 0),
-	('warm_start_type', 'wst', 0),
-	('interaction', 'bs', 0),
-	('inter_ws_size_ratio', 'iwsr', 0),
-	('cb_type', 'cbt', 'mtr'),
-	('validation_method', 'vm', 0),
-	('weighting_scheme', 'wts', 0),
-	('lambda_scheme', 'ls', 0),
-	('choices_lambda', 'cl', 0),
-	('warm_start_update', 'wsu', True),
-	('interaction_update', 'iu', True),
-	('learning_rate', 'lr', 0.0),
-	('optimal_approx', 'oa', False),
-	('majority_approx', 'ma', False),
-	('avg_error', 'ae', 0.0),
-	('actual_variance', 'av', 0.0),
-	('ideal_variance', 'iv', 0.0),
-	('last_lambda', 'll', 0.0),
-	('epsilon', 'eps', 0.0),
-	('loss0', 'l0', 0.0),
-	('loss1', 'l1', 0.0),
-	]
+	#columns in this way.
+	mod.result_template_list = RESULT_TEMPLATE
 
  	num_cols = len(mod.result_template_list)
 	#mod.result_header_list = [ mod.result_template_list[i][0] for i in range(num_cols) ]
@@ -685,7 +742,7 @@ if __name__ == '__main__':
 	mod = model()
 	mod.num_tasks = args.num_tasks
 	mod.task_id = args.task_id
-	mod.vw_path = '../vowpalwabbit/vw'
+	mod.vw_path = '../../vowpal_wabbit/vowpalwabbit/vw'
 	mod.ds_path = args.ds_dir
 	mod.results_path = args.results_dir
 	print 'reading dataset files..'
@@ -726,7 +783,8 @@ if __name__ == '__main__':
 			time.sleep(1)
 
 	if args.num_learning_rates <= 0:
-		mod.learning_rates = [gen_lr(0)]
+		#mod.learning_rates = [gen_lr(0)]
+		mod.learning_rates = [0.5]
 	else:
 		mod.learning_rates = [gen_lr(i) for i in range(args.num_learning_rates)]
 	#mod.folds = range(1,11)

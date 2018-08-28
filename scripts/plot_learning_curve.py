@@ -1,6 +1,5 @@
 import matplotlib
 matplotlib.use('Agg')
-from plot_warm_start import avg_error
 from alg_comparison import alg_str, alg_color_style, alg_index, order_legends, noise_type_str, save_legend
 import glob
 import pandas as pd
