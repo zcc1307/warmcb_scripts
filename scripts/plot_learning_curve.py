@@ -1,7 +1,9 @@
 import matplotlib
 matplotlib.use('Agg')
-from alg_comparison import alg_str, alg_color_style, alg_index, order_legends, noise_type_str, save_legend
+from alg_const import alg_str, alg_color_style, alg_index, noise_type_str
 import glob
+from alg_comparison import order_legends, save_legend
+from run_vw_commands import avg_error, complete_header, VW_PROGRESS_PATTERN
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,7 +14,7 @@ import re
 class model:
 	def __init__(self):
 		pass
-
+'''
 def collect_learning_curve(mod):
 	f = open(mod.vw_output_filename, 'r')
 
@@ -48,6 +50,49 @@ def collect_learning_curve(mod):
 
 	f.close()
 	return weights, avg_losses
+'''
+
+def collect_learning_curve(mod):
+	f = open(mod.vw_output_filename, 'r')
+
+	avg_losses = []
+	weights = []
+	lambdas = []
+
+	vw_output_text = f.read()
+	rgx = re.compile(VW_PROGRESS_PATTERN, flags=re.M)
+	matched = rgx.findall(vw_output_text)
+
+	for mat in matched:
+		line = mat
+		#print mat
+		s = line.split()
+		if len(s) >= 12:
+			s = s[:11]
+
+		counter_new, last_lambda, actual_var, ideal_var, \
+		avg_loss, last_loss, counter, weight, curr_label, curr_pred, curr_feat = s
+		inter_effective = int(float(weight))
+
+		if mod.error_type == 1:
+			avg_loss = float(avg_loss)
+		else:
+			avg_loss = float(last_loss)
+
+		weight = int(float(weight))
+		last_lambda = float(last_lambda)
+
+		avg_losses.append(avg_loss)
+		weights.append(weight)
+		lambdas.append(last_lambda)
+
+	if mod.alg_name == 'Sup-Only':
+		# for supervised only, we simply plot a horizontal line using the last point
+		len_all = len(avg_losses)
+		avg_losses = [avg_losses[len_all-1] for i in range(len_all) ]
+
+	f.close()
+	return weights, avg_losses, lambdas
 
 def problem_str(problem_param_names, problem_param_values):
 	s = ''
@@ -68,6 +113,7 @@ def parse_all_filenames(mod):
 			item_splitted = item.split('=')
 			if len(item_splitted) == 2:
 				param_name, param_value = item_splitted
+				param_name = complete_header(param_name)
 				if param_name not in d.keys():
 					d[param_name] = []
 				d[param_name].append(param_value)
@@ -76,14 +122,17 @@ def parse_all_filenames(mod):
 		d['avg_error'].append(avg_error(mod))
 
 	results = pd.DataFrame(d)
+	print results
 	results[['warm_start_type','choices_lambda']] = results[['warm_start_type','choices_lambda']].astype(int)
 
-	results[['no_bandit','no_supervised']] = results[['no_bandit','no_supervised']]=='True'
+	results[['warm_start_update','interaction_update']] = results[['warm_start_update','interaction_update']]=='True'
+
+	results[['validation_method']] = results[['validation_method']].astype(int)
 
 	print results
 
 	#ignore the no update row:
-	results = results[(results['no_supervised'] == False) | (results['no_bandit'] == False)]
+	results = results[(results['warm_start_update'] == True) | (results['interaction_update'] == True)]
 	#ignore the choice_lambda = 4 row
 	results = results[(results['choices_lambda'] != 4)]
 
@@ -106,7 +155,7 @@ def generate_figs_per_ds(mod):
 	os.chdir(mod.ds)
 	results = parse_all_filenames(mod)
 
-	problem_param_names = ['warm_start_multiplier', 'corrupt_type_supervised','corrupt_prob_supervised']
+	problem_param_names = ['warm_start_multiplier', 'corrupt_type_warm_start','corrupt_prob_warm_start']
 	grouped_by_problem_setting = results.groupby(problem_param_names)
 
 	for name_problem, group_problem in grouped_by_problem_setting:
@@ -115,9 +164,9 @@ def generate_figs_per_ds(mod):
 		mod.problem_text = problem_text(name_problem)
 		print group_problem.shape[0]
 
-		alg_param_names = ['warm_start_type', 'choices_lambda', 'no_supervised', 'no_bandit']
+		alg_param_names = ['warm_start_type', 'choices_lambda', 'warm_start_update', 'interaction_update', 'validation_method']
 
-		group_problem_subcol = group_problem[['warm_start_type', 'choices_lambda', 'no_supervised', 'no_bandit']].drop_duplicates()
+		group_problem_subcol = group_problem[['warm_start_type', 'choices_lambda', 'warm_start_update', 'interaction_update', 'validation_method']].drop_duplicates()
 		num_algs = group_problem_subcol.shape[0]
 		# a hack here - ensure that all graphs generated have 7 algorithms.
 
@@ -141,6 +190,7 @@ def generate_figs_per_ds(mod):
 
 			weights = None
 
+			print name_algorithm
 			mod.alg_name = alg_str(name_algorithm)
 			mod.alg_col, mod.alg_sty = alg_color_style(name_algorithm)
 			print mod.alg_name, mod.alg_col, mod.alg_sty
@@ -150,16 +200,18 @@ def generate_figs_per_ds(mod):
 			#	continue
 
 			avg_losses_all = []
-
+			lambdas_all = []
 
 			for idx, row in group_problem_algorithm.iterrows():
 				mod.vw_output_filename = row['filename']
-				temp_weights, avg_losses = collect_learning_curve(mod)
+				temp_weights, avg_losses, lambdas = collect_learning_curve(mod)
 				if weights is None:
 					weights = temp_weights
 				avg_losses_all.append(avg_losses)
+				lambdas_all.append(lambdas)
 
 			folds = len(avg_losses_all)
+			lambdas_mean = [np.mean(x) for x in zip(*lambdas_all)]
 			avg_losses_mean = [np.mean(x) for x in zip(*avg_losses_all)]
 			avg_losses_stderr = [np.std(x)  / np.sqrt(folds) for x in zip(*avg_losses_all)]
 			len_x = len(avg_losses_mean)
@@ -168,7 +220,7 @@ def generate_figs_per_ds(mod):
 			# This is because we have 200 checkpoints and we would like to
 			# limit the number of examples to be 92%
 			num_examples_checkpoint = weights[1] - weights[0]
-			num_bandit_cutoff = 184 * num_examples_checkpoint
+			#num_bandit_cutoff = 184 * num_examples_checkpoint
 
 			if mod.plot_ticks_only is True:
 				ticks = range(0,len_x,len_x/20)
@@ -183,15 +235,21 @@ def generate_figs_per_ds(mod):
 			if mod.plot_log_scale is True:
 				plt.gca().set_xscale('log')
 
+			print len(weights)
+			#print weights
+			#print avg_losses_mean
+
 			if mod.learning_curve_type == 1:
-				plt.errorbar(weights, avg_losses_mean, yerr=avg_losses_ci, label=mod.alg_name, color=mod.alg_col, linestyle=mod.alg_sty, linewidth=2.0)
+				#plt.plot(weights, avg_losses_mean, label=mod.alg_name, color=mod.alg_col, linestyle=mod.alg_sty, linewidth=2.0)
+				plt.errorbar(weights, lambdas_mean, yerr=avg_losses_ci, label=mod.alg_name, color=mod.alg_col, linestyle=mod.alg_sty, linewidth=2.0)
+				#plt.errorbar(weights, avg_losses_mean, yerr=avg_losses_ci, label=mod.alg_name, color=mod.alg_col, linestyle=mod.alg_sty, linewidth=2.0)
 			else:
 				plt.plot(weights, avg_losses_mean, label=mod.alg_name, color=mod.alg_col, linestyle=mod.alg_sty, linewidth=2.0)
 				avg_losses_up = [avg_losses_mean[i] + avg_losses_ci[i] for i in range(len_x)]
 				avg_losses_down = [avg_losses_mean[i] - avg_losses_ci[i] for i in range(len_x)]
 				plt.fill_between(weights, avg_losses_down, avg_losses_up, color=mod.alg_col, linestyle=mod.alg_sty, alpha=0.2)
 
-			plt.xlim(0, num_bandit_cutoff)
+			#plt.xlim(0, num_bandit_cutoff)
 			indices.append(alg_index(name_algorithm))
 
 		print 'plotting for '+mod.problem_text+'...'
@@ -207,8 +265,8 @@ def generate_figs_per_ds(mod):
 		plt.tight_layout(h_pad=1.0)
 		ax = plt.gca()
 		ax.legend_.remove()
-		plt.ylim(0.8,1.0)
-		plt.savefig(mod.problem_name+',learning_curve_type='+str(mod.learning_curve_type)+',error_type='+str(mod.error_type)+'.pdf')
+		#plt.ylim(0.8,1.0)
+		plt.savefig(mod.problem_name+',learning_curve_type='+str(mod.learning_curve_type)+',error_type='+str(mod.error_type)+'_lambdas.pdf')
 		mod.problemdir='./'
 		save_legend(mod, indices)
 		plt.clf()
@@ -222,13 +280,11 @@ def go_over_dirs(mod):
 	os.chdir(prevdir)
 
 	for ds in dss:
-		if ds == 'flag/':
-			continue
-
-		mod.ds = ds
-		os.chdir(mod.results_dir)
-		generate_figs_per_ds(mod)
-		os.chdir(prevdir)
+		if ds.startswith('ds'):
+			mod.ds = ds
+			os.chdir(mod.results_dir)
+			generate_figs_per_ds(mod)
+			os.chdir(prevdir)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='learning curve plots')
@@ -237,9 +293,9 @@ if __name__ == '__main__':
 
 	mod = model()
 	mod.results_dir = args.results_dir
-	mod.learning_curve_type = 2
+	mod.learning_curve_type = 1
 	mod.error_type = 1
 	mod.plot_ticks_only = False
-	mod.plot_ci = True
+	mod.plot_ci = False
 	mod.plot_log_scale = True
 	go_over_dirs(mod)

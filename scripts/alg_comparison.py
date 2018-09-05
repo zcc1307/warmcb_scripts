@@ -14,6 +14,7 @@ from matplotlib.colors import ListedColormap
 from matplotlib.font_manager import FontProperties
 from collections import Counter
 import random
+import math
 from alg_const import noise_type_str, alg_info, alg_str, alg_str_compatible, alg_color_style, alg_index
 
 pd.set_option('display.max_columns', 500)
@@ -170,6 +171,19 @@ def plot_all_lrs(lrs, mod):
 		plt.savefig(mod.problemdir+alg_str_compatible(alg_names[i])+'_lr.pdf')
 		plt.clf()
 
+def plot_all_lambdas(lambdas, mod):
+	alg_names = lambdas.keys()
+
+	for i in range(len(alg_names)):
+		pylab.figure(figsize=(8,6))
+		lambdas_alg = lambdas[alg_names[i]]
+		names = sorted(list(set(lambdas_alg)))
+		values = [lambdas_alg.count(n) for n in names]
+		plt.barh(range(len(names)),values)
+		plt.yticks(range(len(names)),names)
+		plt.savefig(mod.problemdir+alg_str_compatible(alg_names[i])+'_lambdas.pdf')
+		plt.clf()
+
 
 def plot_all_pair_comp(alg_results, sizes, mod):
 	alg_names = alg_results.keys()
@@ -198,6 +212,9 @@ def normalize_score(unnormalized_result, mod):
 		return { k : ((v - l) / (l + 1e-4)) for k, v in unnormalized_result.iteritems() }
 	elif mod.normalize_type == 3:
 		return unnormalized_result
+	elif mod.normalize_type == 4:
+		l = get_best_error(mod.best_error_table, mod.name_dataset)
+		return { k : (v - l) for k, v in unnormalized_result.iteritems() }
 
 def get_best_error(best_error_table, name_dataset):
 	name = name_dataset[0]
@@ -214,6 +231,7 @@ def get_maj_error(maj_error_table, name_dataset):
 def get_unnormalized_results(result_table):
 	new_unnormalized_results = {}
 	new_lr = {}
+	new_lambda = {}
 	new_size = 0
 
 	i = 0
@@ -229,13 +247,14 @@ def get_unnormalized_results(result_table):
 			 			row['validation_method'])
 			new_unnormalized_results[alg_name] = row['avg_error']
 			new_lr[alg_name] = row['learning_rate']
+			new_lambda[alg_name] = row['last_lambda']
 		i += 1
 
-	return new_size, new_unnormalized_results, new_lr
+	return new_size, new_unnormalized_results, new_lr, new_lambda
 
 def update_result_dict(results_dict, new_result):
 	if len(new_result) != len(results_dict):
-		print 'Warning: length of the new record does not match the length of the existing dict; perhaps the input data is corrupted.'
+		print 'Warning: length of the new record ( ', len(new_result), ' ) does not match the length of the existing dict ( ', len(results_dict), ' ); perhaps the input data is corrupted.'
 
 	for k, v in new_result.iteritems():
 		results_dict[k].append(v)
@@ -303,11 +322,15 @@ def plot_all(mod, all_results):
 			#raw_input('...')
 
 			#Record the error rates of all algorithms
-			new_size, new_unnormalized_result, new_lr = get_unnormalized_results(result_table)
+			new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
 
 			new_unnormalized_result[(0, 0, False, False, 1)] = get_maj_error(mod.maj_error_table, mod.name_dataset)
 			new_lr[(0, 0, False, False, 1)] = 0.0
+			new_lambda[(0, 0, False, False, 1)] = 0.0
 			new_normalized_result = normalize_score(new_unnormalized_result, mod)
+
+			#if len(new_lr) != 3:
+			#	continue
 
 			#first time - generate names of algorithms considered
 			if normalized_results is None:
@@ -315,11 +338,15 @@ def plot_all(mod, all_results):
 				unnormalized_results = dict([(k,[]) for k in new_unnormalized_result.keys()])
 				normalized_results = dict([(k,[]) for k in new_unnormalized_result.keys()])
 				lrs = dict([(k,[]) for k in new_unnormalized_result.keys()])
+				lambdas = dict([(k,[]) for k in new_unnormalized_result.keys()])
 
 			update_result_dict(unnormalized_results, new_unnormalized_result)
 			update_result_dict(normalized_results, new_normalized_result)
 			update_result_dict(lrs, new_lr)
+			update_result_dict(lambdas, new_lambda)
 			sizes.append(new_size)
+
+		print normalized_results
 
 		mod.problemdir = mod.fulldir+problem_str(mod.name_problem)+'/'
 		if not os.path.exists(mod.problemdir):
@@ -331,6 +358,7 @@ def plot_all(mod, all_results):
 			plot_all_cdfs(normalized_results, mod)
 
 		plot_all_lrs(lrs, mod)
+		plot_all_lambdas(lambdas, mod)
 
 def save_to_hdf(mod):
 	print 'saving to hdf..'
@@ -391,6 +419,7 @@ if __name__ == '__main__':
 	#1: normalized score;
 	#2: bandit only centered score;
 	#3: raw score
+	#4: normalized score w/o denominator
 
 	args = parser.parse_args()
 	mod = model()
@@ -449,6 +478,19 @@ if __name__ == '__main__':
 	all_results = all_results[(all_results['epsilon'] != 0.0)]
 
 
+	#all_results = all_results[(all_results['warm_start_update'] == True) & (all_results['interaction_update'] == True)]
+	# Some of the summary files have broken records (incomplete rows)
+	all_results['learning_rate'] = all_results['learning_rate'].astype(float)
+	#print all_results[all_results.apply(lambda row: math.isnan(row['learning_rate']), axis=1)]
+	#raw_input('..')
+
+	#all_results['warm_start_type'] = all_results['warm_start_type'].astype(int)
+	#all_results['choices_lambda'] = all_results['choices_lambda'].astype(int)
+	#all_results['warm_start_update'] = all_results['warm_start_update'].astype(bool)
+	#all_results['interaction_update'] = all_results['interaction_update'].astype(bool)
+	#all_results['validation_method'] = all_results['validation_method'].astype(int)
+
+
 	#print all_results[(all_results['epsilon'] == 0.0125) & (all_results['warm_start_update'] == True) & (all_results['interaction_update'] == False)].shape
 	#raw_input('..')
 
@@ -456,7 +498,10 @@ if __name__ == '__main__':
 	mod.maj_error_table = mod.maj_error_table[mod.maj_error_table['majority_approx']]
 	mod.best_error_table = parse_sum_file(mod.best_error_dir)
 	mod.best_error_table = mod.best_error_table[mod.best_error_table['optimal_approx']]
+
+
 	mod.learning_rates = sorted(all_results.learning_rate.unique())
+
 
 	all_results = filter_results(mod, all_results)
 

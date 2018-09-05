@@ -35,8 +35,6 @@ RESULT_TEMPLATE = \
 	('warm_start_update', 'wsu', True),
 	('interaction_update', 'iu', True),
 	('learning_rate', 'lr', 0.0),
-	('optimal_approx', 'oa', False),
-	('majority_approx', 'ma', False),
 	('avg_error', 'ae', 0.0),
 	('actual_variance', 'av', 0.0),
 	('ideal_variance', 'iv', 0.0),
@@ -44,7 +42,10 @@ RESULT_TEMPLATE = \
 	('epsilon', 'eps', 0.0),
 	('loss0', 'l0', 0.0),
 	('loss1', 'l1', 0.0),
+	('algorithm', 'alg', '')
 	]
+	#('optimal_approx', 'oa', False),
+	#('majority_approx', 'ma', False),
 
 VW_OUTPUT_TMPLT = \
 	['dataset',
@@ -62,13 +63,15 @@ VW_OUTPUT_TMPLT = \
 	 'choices_lambda',
 	 'weighting_scheme',
 	 'cb_type',
-	 'optimal_approx',
-	 'majority_approx',
 	 'learning_rate',
 	 'adf_on',
 	 'epsilon',
 	 'loss0',
-	 'loss1']
+	 'loss1',
+	 'algorithm']
+
+ 	 #'optimal_approx',
+ 	 #'majority_approx',
 
 VW_RUN_TMPLT_OPT = \
  	[('data',''),
@@ -115,7 +118,8 @@ VW_RUN_TMPLT_WARMCB = \
 #int_pat = '\d+'
 foi_pat = '\d+(\.\d+)?'
 label_pat = '[a-zA-Z0-9]+'
-VW_PROGRESS_PATTERN = '('+label_pat+'\s+'+label_pat+'\s+'+label_pat+'\s+'+label_pat+'\n'+ \
+gen_pat = '[a-zA-Z0-9\.]+'
+VW_PROGRESS_PATTERN = '('+gen_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\n'+ \
 			'\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+\n)'
 
 #VW_PROGRESS_PATTERN = '(\n'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\n'+ \
@@ -131,6 +135,7 @@ VW_RESULT_TMPLT = \
 	'last_lambda':0.0
 	}
 
+
 class model:
 	def __init__(self):
 		# Setting up argument-independent learning parameters in the constructor
@@ -143,27 +148,28 @@ class model:
 		self.optimal_on = False
 		self.majority_on = False
 
-		self.ws_gt_on = False
-		self.inter_gt_on = True
+		self.ws_gt_on = True
+		self.inter_gt_on = False
 
+		#self.num_checkpoints = 400
 		self.num_checkpoints = 200
 
 		# use fractions instead of absolute numbers
 		#self.ws_multipliers = [pow(2,i) for i in range(4)]
-		self.ws_multipliers = [pow(2,i) for i in range(4)]
+		self.ws_multipliers = [pow(2,i) for i in range(1)]
 
 		self.choices_cb_type = ['mtr']
 		#mod.choices_choices_lambda = [2,4,8]
-		self.choices_choices_lambda = [2,16]
+		self.choices_choices_lambda = [2,8]
 
-		#self.choices_cor_type_ws = [1,2,3]
-		#self.choices_cor_prob_ws = [0.0,0.5,1.0]
 		self.choices_cor_type_ws = [1,2,3]
-		self.choices_cor_prob_ws = [0.0, 0.5, 1.0]
+		self.choices_cor_prob_ws = [0.0,0.5,1.0]
+		#self.choices_cor_type_ws = [1]
+		#self.choices_cor_prob_ws = [0.0]
 
 		self.choices_cor_type_inter = [1]
 		self.choices_cor_prob_inter = [0.0]
-		#self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5, 1.0]
+		#self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5]
 
 		self.choices_loss_enc = [(0, 1)]
 		#self.choices_cor_type_inter = [1,2]
@@ -174,7 +180,8 @@ class model:
 		#self.epsilon_on = True
 		#self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
 		self.choices_adf = [True]
-		self.critical_size_ratios = [184 * pow(2, -i) for i in range(7) ]
+		#self.critical_size_ratios = [368 * pow(2, -i) for i in range(8) ]
+		self.critical_size_ratios = [184 * pow(2, -i) for i in range(8) ]
 
 def gen_lr(n):
 	m = math.floor(n / 4.0)
@@ -201,7 +208,7 @@ def collect_stats_maj_opt(mod):
 def collect_stats(mod):
 	vw_run_results = []
 
-	if 'majority_approx' in mod.param or 'optimal_approx' in mod.param:
+	if mod.param['algorithm'] == 'Most-Freq' or mod.param['algorithm'] == 'Optimal':
 		vw_run_results.append(collect_states_maj_opt(mod))
 		return vw_run_results
 
@@ -212,6 +219,7 @@ def collect_stats(mod):
 
 	for mat in matched:
 		line = mat
+		#print mat
 		s = line.split()
 		if len(s) >= 12:
 			s = s[:11]
@@ -512,7 +520,8 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 			prm_ws_gt = \
 			[
 				 [
-			  	 	{'warm_start_update': True,
+			  	 	{'algorithm':'AwesomeBandits',
+					 'warm_start_update': True,
 					 'interaction_update': True,
 					 'warm_start_type': 1,
 					 'lambda_scheme': 2,
@@ -530,7 +539,8 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 			prm_inter_gt = \
 			[
 				 [
-			  	 	{'warm_start_update': True,
+			  	 	{'algorithm':'AwesomeBandits',
+					 'warm_start_update': True,
 					 'interaction_update': True,
 					 'warm_start_type': 1,
 					 'lambda_scheme': 4,
@@ -553,7 +563,7 @@ def get_params_opt(mod):
 	if mod.optimal_on:
 		prm_optimal = \
 		[
-			{'optimal_approx': True,
+			{'algorithm': 'Optimal',
 			 'fold': 1,
 			 'corrupt_type_warm_start':1,
 			 'corrupt_prob_warm_start':0.0,
@@ -568,7 +578,7 @@ def get_params_maj(mod):
 	if mod.majority_on:
 		prm_majority = \
 		[
-			{'majority_approx': True,
+			{'algorithm': 'Most-Freq',
 			 'fold': 1,
 			 'corrupt_type_warm_start':1,
 			 'corrupt_prob_warm_start':0.0,
@@ -589,7 +599,8 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 				[
 					#Sup-Only
 					#TODO: make sure the epsilon=0 setting propagates
-			 		{'warm_start_type': 1,
+			 		{'algorithm':'Sup-Only',
+					 'warm_start_type': 1,
 					 'warm_start_update': True,
 					 'interaction_update': False,
 					 'epsilon': 0.0
@@ -601,7 +612,8 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 			prm_oth_baseline_basic[0] += \
 				[
 					#Band-Only
-	 		 		{'warm_start_type': 1,
+	 		 		{'algorithm':'Bandit-Only',
+					 'warm_start_type': 1,
 	 				 'warm_start_update': False,
 	 				 'interaction_update': True}
 				]
@@ -609,11 +621,12 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 		if mod.sim_bandit_on:
 			prm_oth_baseline_basic[0] += \
 				[
-				#Sim-Bandit
-				{'warm_start_type': 2,
-				 'warm_start_update': True,
-					 'interaction_update': True,
-				 'lambda_scheme': 1}
+					#Sim-Bandit
+					{'algorithm':'Sim-Bandit',
+					 'warm_start_type': 2,
+					 'warm_start_update': True,
+				     'interaction_update': True,
+					 'lambda_scheme': 1}
 				]
 
 		#Sim-Bandit with only warm-start update
@@ -698,6 +711,11 @@ def write_summary_header(mod):
 	summary_header = intersperse(mod.result_template.keys(), '\t')
 	summary_file.write(summary_header+'\n')
 	summary_file.close()
+
+def complete_header(simp_header):
+	simplified_keymap = OrderedDict([ (item[1], item[0]) for item in RESULT_TEMPLATE ])
+	return simplified_keymap[simp_header]
+
 
 def main_loop(mod):
 	mod.summary_file_name = mod.results_path+str(mod.task_id)+'of'+str(mod.num_tasks)+'.sum'
