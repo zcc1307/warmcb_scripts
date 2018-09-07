@@ -1,4 +1,4 @@
-import subprocess
+TMPLTimport subprocess
 from itertools import product
 import os
 import math
@@ -9,7 +9,7 @@ import re
 from collections import OrderedDict
 
 
-RESULT_TEMPLATE = \
+RESULT_TMPLT = \
 	[
 	('fold', 'fd', 0),
 	('data', 'dt', ''),
@@ -21,12 +21,16 @@ RESULT_TEMPLATE = \
 	('corrupt_prob_warm_start', 'cpws', 0.0),
 	('corrupt_type_interaction', 'cti', 0),
 	('corrupt_prob_interaction', 'cpi', 0.0),
-	('adf_on', 'ao', True),
 	('warm_start_multiplier','wsm',1),
 	('warm_start', 'ws', 0),
 	('warm_start_type', 'wst', 0),
 	('interaction', 'bs', 0),
 	('inter_ws_size_ratio', 'iwsr', 0),
+	('algorithm', 'alg', ''),
+	('adf_on', 'ao', True),
+	('epsilon', 'eps', 0.0),
+	('loss0', 'l0', 0.0),
+	('loss1', 'l1', 0.0),
 	('cb_type', 'cbt', 'mtr'),
 	('validation_method', 'vm', 0),
 	('weighting_scheme', 'wts', 0),
@@ -39,15 +43,40 @@ RESULT_TEMPLATE = \
 	('actual_variance', 'av', 0.0),
 	('ideal_variance', 'iv', 0.0),
 	('last_lambda', 'll', 0.0),
-	('epsilon', 'eps', 0.0),
-	('loss0', 'l0', 0.0),
-	('loss1', 'l1', 0.0),
-	('algorithm', 'alg', '')
 	]
 	#('optimal_approx', 'oa', False),
 	#('majority_approx', 'ma', False),
+SUMMARY_TMPLT = \
+	[
+	'fold',
+	'data',
+	'num_classes',
+	'total_size',
+	'majority_size',
+	'corrupt_type_warm_start',
+	'corrupt_prob_warm_start',
+	'corrupt_type_interaction',
+	'corrupt_prob_interaction',
+	'warm_start',
+	'interaction',
+	'inter_ws_size_ratio',
+	'algorithm',
+	'adf_on',
+	'epsilon',
+	'loss0',
+	'loss1',
+	'validation_method',
+	'weighting_scheme',
+	'lambda_scheme',
+	'choices_lambda',
+	'learning_rate',
+	'avg_error',
+	'actual_variance',
+	'ideal_variance',
+	'last_lambda'
+	]
 
-VW_OUTPUT_TMPLT = \
+VW_OUTFILE_NAME_TMPLT = \
 	['dataset',
 	 'fold',
 	 'lambda_scheme',
@@ -69,7 +98,6 @@ VW_OUTPUT_TMPLT = \
 	 'loss0',
 	 'loss1',
 	 'algorithm']
-
  	 #'optimal_approx',
  	 #'majority_approx',
 
@@ -194,9 +222,9 @@ def gen_lr(n):
 	if n % 4 == 3:
 		return 0.01 * pow(10, -m)
 
-def collect_stats_maj_opt(mod):
+def analyze_vw_out_maj_opt(mod):
 	vw_result = VW_RESULT_TMPLT.copy()
-	if 'optimal_approx' in mod.param:
+	if mod.param['algorithm'] == 'Optimal':
 		# this condition is for computing the optimal error
 		vw_result['avg_error'] = avg_error(mod)
 	else:
@@ -205,11 +233,11 @@ def collect_stats_maj_opt(mod):
 		vw_result['avg_error'] = float('%0.5f' % err)
 	return vw_result
 
-def collect_stats(mod):
+def analyze_vw_out(mod):
 	vw_run_results = []
 
 	if mod.param['algorithm'] == 'Most-Freq' or mod.param['algorithm'] == 'Optimal':
-		vw_run_results.append(collect_states_maj_opt(mod))
+		vw_run_results.append(analyze_vw_out_maj_opt(mod))
 		return vw_run_results
 
 	f = open(mod.vw_output_filename, 'r')
@@ -248,22 +276,23 @@ def collect_stats(mod):
 	return vw_run_results
 
 
-def gen_vw_options_list(mod):
+def gen_vw_command(mod):
 	mod.vw_options = format_setting(mod.vw_template, mod.param)
 	vw_options_list = []
 	for k, v in mod.vw_options.iteritems():
 		vw_options_list.append('--'+str(k))
 		vw_options_list.append(str(v))
-	return vw_options_list
+	cmd = intersperse([mod.vw_path]+vw_options_list, ' ')
+	return cmd
 
 def gen_vw_options(mod):
-	if 'optimal_approx' in mod.param:
+	if mod.param['algorithm'] == 'Optimal':
 		# Fully supervised on full dataset
 		mod.vw_template = OrderedDict(VW_RUN_TMPLT_OPT)
 		mod.param['passes'] = 5
 		mod.param['oaa'] = mod.param['num_classes']
 		mod.param['cache_file'] = mod.param['data'] + '.cache'
-	elif 'majority_approx' in mod.param:
+	elif mod.param['algorithm'] == 'Most-Freq':
 		# Compute majority error; basically we would like to skip vw running as fast as possible
 		mod.vw_template = OrderedDict(VW_RUN_TMPLT_MAJ)
 		mod.param['warm_cb'] = mod.param['num_classes']
@@ -287,13 +316,11 @@ def gen_vw_options(mod):
 
 def execute_vw(mod):
 	gen_vw_options(mod)
-	vw_options_list = gen_vw_options_list(mod)
-	cmd = intersperse([mod.vw_path]+vw_options_list, ' ')
+	cmd = gen_vw_command(mod)
 	print cmd
-
 	f = open(mod.vw_output_filename, 'w')
+	f.write(cmd+'\n')
 	process = subprocess.Popen(cmd, shell=True, stdout=f, stderr=f)
-	#subprocess.check_call(cmd, shell=True)
 	process.wait()
 	f.close()
 
@@ -314,19 +341,11 @@ def replace_keys(dic, simplified_keymap):
 		dic_new[simplified_keymap[k]] = v
 	return dic_new
 
-def param_to_str_simplified(mod):
-	#print 'before replace'
-	#print param
-	vw_run_param_set = VW_OUTPUT_TMPLT
-	mod.template_red = OrderedDict([(k,mod.result_template[k]) for k in vw_run_param_set])
-	#mod.simplified_keymap_red = dict([(k,mod.simplified_keymap[k]) for k in vw_run_param_set])
+def get_vw_out_name(mod):
 	# step 1: use the above as a template to filter out irrelevant parameters
-	# in the vw output file title
-	param_formatted = format_setting(mod.template_red, mod.param)
+	param_formatted = format_setting(mod.vw_out_tmplt, mod.param)
 	# step 2: replace the key names with the simplified names
-	param_simplified = replace_keys(param_formatted, mod.simplified_keymap)
-	#print 'after replace'
-	#print param
+	param_simplified = replace_keys(param_formatted, mod.simp_map)
 	return param_to_str(param_simplified)
 
 def run_single_expt(mod):
@@ -336,22 +355,14 @@ def run_single_expt(mod):
 	mod.param['majority_size'], mod.param['majority_class'] = get_majority_class(mod.param['data'])
 	mod.param['progress'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
 	mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
-	mod.vw_output_filename = mod.vw_output_dir + param_to_str_simplified(mod) + '.txt'
-
-	#plot_errors(mod)
-	#print mod.param['validation_method']
+	mod.vw_output_filename = mod.vw_output_dir + get_vw_out_name(mod) + '.txt'
 
 	execute_vw(mod)
 	vw_run_results = collect_stats(mod)
 	for vw_result in vw_run_results:
 		result_combined = merge_two_dicts(mod.param, vw_result)
-
-		#print mod.result_template['no_interaction_update']
-		#print result_combined['no_interaction_update']
-
-		result_formatted = format_setting(mod.result_template, result_combined)
-		record_result(mod, result_formatted)
-
+		result_formatted = format_setting(mod.sum_tmplt, result_combined)
+		write_result(mod, result_formatted)
 
 # The following function is a "template filling" function
 # Given a template, we use the setting dict to fill it as much as possible
@@ -362,16 +373,16 @@ def format_setting(template, setting):
 			formatted[k] = v
 	return formatted
 
-def record_result(mod, result):
-	result_row = result.values()
-	#for k in mod.result_header_list:
-	#	result_row.append(result[k])
-	#print result['validation_method']
-	#print result_row
-
+def write_row(mod, row):
 	summary_file = open(mod.summary_file_name, 'a')
-	summary_file.write( intersperse(result_row, '\t') + '\n')
+	summary_file.write( intersperse(row, '\t') + '\n')
 	summary_file.close()
+
+def write_result(mod, result):
+	write_row(mod, result.values())
+
+def write_summary_header(mod):
+	write_row(mod, mod.result_template.keys())
 
 def ds_files(ds_path):
 	prevdir = os.getcwd()
@@ -706,33 +717,19 @@ def vw_output_extract(mod, pattern):
 	vw_output.close()
 	return avge
 
-def write_summary_header(mod):
-	summary_file = open(mod.summary_file_name, 'w')
-	summary_header = intersperse(mod.result_template.keys(), '\t')
-	summary_file.write(summary_header+'\n')
-	summary_file.close()
-
 def complete_header(simp_header):
-	simplified_keymap = OrderedDict([ (item[1], item[0]) for item in RESULT_TEMPLATE ])
+	simplified_keymap = OrderedDict([ (item[1], item[0]) for item in RESULT_TMPLT ])
 	return simplified_keymap[simp_header]
 
 
 def main_loop(mod):
 	mod.summary_file_name = mod.results_path+str(mod.task_id)+'of'+str(mod.num_tasks)+'.sum'
-
-	# The reason for using a list is that, we would like to keep the order of the
-	#columns in this way.
-	mod.result_template_list = RESULT_TEMPLATE
-
- 	num_cols = len(mod.result_template_list)
-	#mod.result_header_list = [ mod.result_template_list[i][0] for i in range(num_cols) ]
-	mod.result_template = OrderedDict([ (mod.result_template_list[i][0], mod.result_template_list[i][2]) for i in range(num_cols) ])
-	mod.simplified_keymap = OrderedDict([ (mod.result_template_list[i][0], mod.result_template_list[i][1]) for i in range(num_cols) ])
-
+	mod.full_tmplt = OrderedDict([ (item[0], item[2]) for item in RESULT_TMPLT ])
+	mod.simp_map = OrderedDict([ (item[0], item[1]) for item in RESULT_TMPLT ])
+	mod.sum_tmplt = OrderedDict([ (item, mod.full_tmplt[item]) for item in SUMMARY_TMPLT ])
+	mod.vwout_tmplt = OrderedDict([ (item, mod.full_tmplt[item]) for item in VW_OUTFILE_NAME_TMPLT ])
 	write_summary_header(mod)
 	for mod.param in mod.config_task:
-		#if (mod.param['no_interaction_update'] is True):
-		#	raw_input(' ')
 		run_single_expt(mod)
 
 def create_dir(dir):
