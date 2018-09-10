@@ -1,4 +1,4 @@
-TMPLTimport subprocess
+import subprocess
 from itertools import product
 import os
 import math
@@ -7,162 +7,8 @@ import time
 import glob
 import re
 from collections import OrderedDict
-
-
-RESULT_TMPLT = \
-	[
-	('fold', 'fd', 0),
-	('data', 'dt', ''),
-	('dataset', 'ds', ''),
-	('num_classes','nc', 0),
-	('total_size', 'ts', 0),
-	('majority_size','ms', 0),
-	('corrupt_type_warm_start', 'ctws', 0),
-	('corrupt_prob_warm_start', 'cpws', 0.0),
-	('corrupt_type_interaction', 'cti', 0),
-	('corrupt_prob_interaction', 'cpi', 0.0),
-	('warm_start_multiplier','wsm',1),
-	('warm_start', 'ws', 0),
-	('warm_start_type', 'wst', 0),
-	('interaction', 'bs', 0),
-	('inter_ws_size_ratio', 'iwsr', 0),
-	('algorithm', 'alg', ''),
-	('adf_on', 'ao', True),
-	('epsilon', 'eps', 0.0),
-	('loss0', 'l0', 0.0),
-	('loss1', 'l1', 0.0),
-	('cb_type', 'cbt', 'mtr'),
-	('validation_method', 'vm', 0),
-	('weighting_scheme', 'wts', 0),
-	('lambda_scheme', 'ls', 0),
-	('choices_lambda', 'cl', 0),
-	('warm_start_update', 'wsu', True),
-	('interaction_update', 'iu', True),
-	('learning_rate', 'lr', 0.0),
-	('avg_error', 'ae', 0.0),
-	('actual_variance', 'av', 0.0),
-	('ideal_variance', 'iv', 0.0),
-	('last_lambda', 'll', 0.0),
-	]
-	#('optimal_approx', 'oa', False),
-	#('majority_approx', 'ma', False),
-SUMMARY_TMPLT = \
-	[
-	'fold',
-	'data',
-	'num_classes',
-	'total_size',
-	'majority_size',
-	'corrupt_type_warm_start',
-	'corrupt_prob_warm_start',
-	'corrupt_type_interaction',
-	'corrupt_prob_interaction',
-	'warm_start',
-	'interaction',
-	'inter_ws_size_ratio',
-	'algorithm',
-	'adf_on',
-	'epsilon',
-	'loss0',
-	'loss1',
-	'validation_method',
-	'weighting_scheme',
-	'lambda_scheme',
-	'choices_lambda',
-	'learning_rate',
-	'avg_error',
-	'actual_variance',
-	'ideal_variance',
-	'last_lambda'
-	]
-
-VW_OUTFILE_NAME_TMPLT = \
-	['dataset',
-	 'fold',
-	 'lambda_scheme',
-	 'validation_method',
-	 'warm_start_multiplier',
-	 'corrupt_prob_interaction',
-	 'corrupt_prob_warm_start',
-	 'corrupt_type_interaction',
-	 'corrupt_type_warm_start',
- 	 'warm_start_update',
- 	 'interaction_update',
-	 'warm_start_type',
-	 'choices_lambda',
-	 'weighting_scheme',
-	 'cb_type',
-	 'learning_rate',
-	 'adf_on',
-	 'epsilon',
-	 'loss0',
-	 'loss1',
-	 'algorithm']
- 	 #'optimal_approx',
- 	 #'majority_approx',
-
-VW_RUN_TMPLT_OPT = \
- 	[('data',''),
-	 ('progress',2.0),
-	 ('passes',0),
-	 ('oaa',0),
-	 ('cache_file','')]
-
-VW_RUN_TMPLT_MAJ = \
-	 [('data',''),
-	  ('progress',2.0),
-	  ('warm_cb',0),
-	  ('warm_start',0),
-	  ('interaction',0)]
-
-VW_RUN_TMPLT_WARMCB = \
- 	[('data',''),
-	 ('warm_cb',0),
-	 ('cb_type','mtr'),
-	 ('warm_start',0),
-	 ('interaction',0),
-	 ('corrupt_type_interaction',0),
-	 ('corrupt_prob_interaction',0.0),
-	 ('corrupt_type_warm_start',0),
-	 ('corrupt_prob_warm_start',0.0),
-	 ('warm_start_update',True),
-	 ('interaction_update',True),
-	 ('choices_lambda',0),
-	 ('lambda_scheme',1),
-	 ('warm_start_type',1),
-	 ('overwrite_label',1),
-	 ('validation_method',1),
-	 ('weighting_scheme',1),
-	 ('learning_rate',0.5),
-	 ('epsilon', 0.05),
-	 ('loss0', 0),
-	 ('loss1', 0),
-	 ('progress',2.0)]
-
-#VW_PROGRESS_PATTERN = \
-# '\d+\s\d+\.\d+\n' +
-# '\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+.*'
-#float_pat = '\d+\.\d+'
-#int_pat = '\d+'
-foi_pat = '\d+(\.\d+)?'
-label_pat = '[a-zA-Z0-9]+'
-gen_pat = '[a-zA-Z0-9\.]+'
-VW_PROGRESS_PATTERN = '('+gen_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\n'+ \
-			'\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+\n)'
-
-#VW_PROGRESS_PATTERN = '(\n'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\n'+ \
-                  #foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+label_pat+'\s+'+label_pat+'\s+'+foi_pat+'\n)'
-
-VW_RESULT_TMPLT = \
-	{
-	'interaction': 0,
-	'inter_ws_size_ratio': 0,
-	'avg_error': 0.0,
-	'actual_variance': 0.0,
-	'ideal_variance': 0.0,
-	'last_lambda':0.0
-	}
-
+from params_gen import get_all_params, merge_two_dicts
+from vw_commands_const import RESULT_TMPLT, SUMMARY_TMPLT, VW_OUTFILE_NAME_TMPLT, VW_RUN_TMPLT_OPT, VW_RUN_TMPLT_MAJ, VW_RUN_TMPLT_WARMCB, VW_PROGRESS_PATTERN, VW_RESULT_TMPLT
 
 class model:
 	def __init__(self):
@@ -247,7 +93,6 @@ def analyze_vw_out(mod):
 
 	for mat in matched:
 		line = mat
-		#print mat
 		s = line.split()
 		if len(s) >= 12:
 			s = s[:11]
@@ -268,18 +113,13 @@ def analyze_vw_out(mod):
 				vw_result['last_lambda'] = float(last_lambda)
 				vw_run_results.append(vw_result)
 	f.close()
-
-	#if len(vw_run_results) >= 1:
-	#	print mod.param['warm_start']
-	#	print vw_run_results
-	#raw_input('..')
 	return vw_run_results
 
 
 def gen_vw_command(mod):
 	mod.vw_options = format_setting(mod.vw_template, mod.param)
 	vw_options_list = []
-	for k, v in mod.vw_options.iteritems():
+	for k, v in mod.vw_options.items():
 		vw_options_list.append('--'+str(k))
 		vw_options_list.append(str(v))
 	cmd = intersperse([mod.vw_path]+vw_options_list, ' ')
@@ -317,9 +157,11 @@ def gen_vw_options(mod):
 def execute_vw(mod):
 	gen_vw_options(mod)
 	cmd = gen_vw_command(mod)
-	print cmd
+	print(cmd)
 	f = open(mod.vw_output_filename, 'w')
 	f.write(cmd+'\n')
+	f.close()
+	f = open(mod.vw_output_filename, 'a')
 	process = subprocess.Popen(cmd, shell=True, stdout=f, stderr=f)
 	process.wait()
 	f.close()
@@ -332,12 +174,12 @@ def intersperse(l, ch):
 	return s
 
 def param_to_str(param):
-	param_list = [ str(k)+'='+str(v) for k,v in param.iteritems() ]
+	param_list = [ str(k)+'='+str(v) for k,v in param.items() ]
 	return intersperse(param_list, ',')
 
 def replace_keys(dic, simplified_keymap):
 	dic_new = OrderedDict()
-	for k, v in dic.iteritems():
+	for k, v in dic.items():
 		dic_new[simplified_keymap[k]] = v
 	return dic_new
 
@@ -358,7 +200,7 @@ def run_single_expt(mod):
 	mod.vw_output_filename = mod.vw_output_dir + get_vw_out_name(mod) + '.txt'
 
 	execute_vw(mod)
-	vw_run_results = collect_stats(mod)
+	vw_run_results = analyze_vw_out(mod)
 	for vw_result in vw_run_results:
 		result_combined = merge_two_dicts(mod.param, vw_result)
 		result_formatted = format_setting(mod.sum_tmplt, result_combined)
@@ -368,7 +210,7 @@ def run_single_expt(mod):
 # Given a template, we use the setting dict to fill it as much as possible
 def format_setting(template, setting):
 	formatted = template.copy()
-	for k, v in setting.iteritems():
+	for k, v in setting.items():
 		if k in template.keys():
 			formatted[k] = v
 	return formatted
@@ -382,7 +224,7 @@ def write_result(mod, result):
 	write_row(mod, result.values())
 
 def write_summary_header(mod):
-	write_row(mod, mod.result_template.keys())
+	write_row(mod, mod.sum_tmplt.keys())
 
 def ds_files(ds_path):
 	prevdir = os.getcwd()
@@ -391,280 +233,6 @@ def ds_files(ds_path):
 	#dss = [ds_path+ds for ds in dss]
 	os.chdir(prevdir)
 	return dss
-
-def merge_two_dicts(x, y):
-	#print 'x = ', x
-	#print 'y = ', y
-	z = x.copy()   # start with x's keys and values
-	z.update(y)    # modifies z with y's keys and values & returns None
-	return z
-
-def param_cartesian(param_set_1, param_set_2):
-	prod = []
-	for param_1 in param_set_1:
-		for param_2 in param_set_2:
-			prod.append(merge_two_dicts(param_1, param_2))
-	return prod
-
-def param_cartesian_multi(param_sets):
-	#print param_sets
-	prod = [{}]
-	for param_set in param_sets:
-		prod = param_cartesian(prod, param_set)
-	return prod
-
-def dictify(param_name, param_choices):
-	result = []
-	for param in param_choices:
-		dic = {}
-		if isinstance(param_name, tuple):
-			for i in range(len(param_name)):
-				dic[param_name[i]] = param[i]
-		else:
-			dic[param_name] = param
-		result.append(dic)
-	print param_name, result
-	return result
-
-
-def params_per_task(mod):
-	# Problem parameters
-	prm_cor_type_ws = dictify('corrupt_type_warm_start', mod.choices_cor_type_ws)
-	prm_cor_prob_ws = dictify('corrupt_prob_warm_start', mod.choices_cor_prob_ws)
-	prm_cor_type_inter = dictify('corrupt_type_interaction', mod.choices_cor_type_inter)
-	prm_cor_prob_inter = dictify('corrupt_prob_interaction', mod.choices_cor_prob_inter)
-	prm_ws_multiplier = dictify('warm_start_multiplier', mod.ws_multipliers)
-	prm_lrs = dictify('learning_rate', mod.learning_rates)
-	# could potentially induce a bug if the maj and best does not have this parameter
-	prm_fold = dictify('fold', mod.folds)
-	# Algorithm parameters
-	prm_cb_type = dictify('cb_type', mod.choices_cb_type)
-	prm_dataset = dictify('dataset', mod.dss)
-	prm_choices_lbd = dictify('choices_lambda', mod.choices_choices_lambda)
-	prm_choices_eps = dictify('epsilon', mod.choices_epsilon)
-	prm_adf_on = dictify('adf_on', mod.choices_adf)
-	prm_loss_enc = dictify(('loss0', 'loss1'), mod.choices_loss_enc)
-
-	# Common parameters
-
-	# Corruption parameters
-	prm_cor = param_cartesian_multi(
-	[prm_cor_type_ws,
-	 prm_cor_prob_ws,
-	 prm_cor_type_inter,
-	 prm_cor_prob_inter])
-	fltr_inter_gt, fltr_ws_gt = get_filters(mod)
-	prm_cor = filter(lambda p: (fltr_ws_gt(p) or fltr_inter_gt(p)), prm_cor)
-
-	prm_com_noeps = param_cartesian_multi(
-	[prm_cor,
-	 prm_ws_multiplier,
-	 prm_lrs,
-	 prm_cb_type,
-	 prm_fold,
-	 prm_adf_on,
-	 prm_loss_enc])
-
-	prm_com = param_cartesian(prm_com_noeps, prm_choices_eps)
-	prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
-	prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
-
-	prm_baseline = get_params_baseline(mod, prm_com, prm_com_noeps)
-	prm_alg = get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd)
-	prm_opt = get_params_opt(mod)
-	prm_maj = get_params_maj(mod)
-
-	#for p in params_common:
-	#	print p
-	#for p in params_baseline:
-	#	print p
-	#print len(prm_com_ws_gt), len(prm_algs_ws_gt)
-	#print len(prm_com_inter_gt), len(prm_algs_inter_gt)
-	#print len(prm_com)
-	#print len(prm_baseline)
-	#print len(prm_algs)
-	#raw_input('..')
-
-	# Common factor in all 3 groups: dataset
-	prm_all = param_cartesian_multi(
-	[prm_dataset,
-	 prm_baseline + prm_alg + prm_opt + prm_maj])
-
-	prm_all = sorted(prm_all,
-						key=lambda d: (d['dataset'],
-						               d['corrupt_type_warm_start'],
-									   d['corrupt_prob_warm_start'],
-									   d['corrupt_type_interaction'],
-									   d['corrupt_prob_interaction'])
-					 )
-	print 'The total number of VW commands to run is: ', len(prm_all)
-	for row in prm_all:
-		print row
-	return get_params_task(prm_all)
-
-def get_filters(mod):
-	if mod.inter_gt_on:
-		fltr_inter_gt = lambda p: ((p['corrupt_type_interaction'] == 1 #noiseless for interaction data
-								and abs(p['corrupt_prob_interaction']) < 1e-4)
-								and
-			                    (p['corrupt_type_warm_start'] == 1 #filter out repetitive warm start data
-								or abs(p['corrupt_prob_warm_start']) > 1e-4))
-	else:
-		fltr_inter_gt = lambda p: False
-
-	if mod.ws_gt_on:
-		fltr_ws_gt = lambda p: ((p['corrupt_type_warm_start'] == 1 #noiseless for warm start data
-							and abs(p['corrupt_prob_warm_start']) < 1e-4)
-							and
-		                    (p['corrupt_type_interaction'] == 1 #filter out repetitive interaction data
-							or abs(p['corrupt_prob_interaction']) > 1e-4))
-	else:
-		fltr_ws_gt = lambda p: False
-
-	return (fltr_inter_gt, fltr_ws_gt)
-
-def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
-	# Algorithm parameters construction
-	if mod.algs_on:
-		# Algorithms for supervised validation
-		if mod.ws_gt_on:
-			prm_ws_gt = \
-			[
-				 [
-			  	 	{'algorithm':'AwesomeBandits',
-					 'warm_start_update': True,
-					 'interaction_update': True,
-					 'warm_start_type': 1,
-					 'lambda_scheme': 2,
-					 'weighting_scheme': 2}
-				 ],
-				 [
-				 	{'validation_method':2},
-					{'validation_method':3}
-				 ]
-		    ]
-		else:
-			prm_ws_gt = [[]]
-
-		if mod.inter_gt_on:
-			prm_inter_gt = \
-			[
-				 [
-			  	 	{'algorithm':'AwesomeBandits',
-					 'warm_start_update': True,
-					 'interaction_update': True,
-					 'warm_start_type': 1,
-					 'lambda_scheme': 4,
-					 'weighting_scheme': 1}
-				 ],
-			]
-		else:
-			prm_inter_gt = [[]]
-
-		prm_algs_ws_gt = param_cartesian_multi([prm_com_ws_gt] + [prm_choices_lbd] + prm_ws_gt)
-		prm_algs_inter_gt = param_cartesian_multi([prm_com_inter_gt] + [prm_choices_lbd] + prm_inter_gt)
-		prm_algs = prm_algs_ws_gt + prm_algs_inter_gt
-	else:
-		prm_algs = []
-	return prm_algs
-
-
-def get_params_opt(mod):
-	# Optimal baselines parameter construction
-	if mod.optimal_on:
-		prm_optimal = \
-		[
-			{'algorithm': 'Optimal',
-			 'fold': 1,
-			 'corrupt_type_warm_start':1,
-			 'corrupt_prob_warm_start':0.0,
-			 'corrupt_type_interaction':1,
-			 'corrupt_prob_interaction':0.0}
-	    ]
-	else:
-		prm_optimal = []
-	return prm_optimal
-
-def get_params_maj(mod):
-	if mod.majority_on:
-		prm_majority = \
-		[
-			{'algorithm': 'Most-Freq',
-			 'fold': 1,
-			 'corrupt_type_warm_start':1,
-			 'corrupt_prob_warm_start':0.0,
-			 'corrupt_type_interaction':1,
-			 'corrupt_prob_interaction':0.0}
-		]
-	else:
-		prm_majority = []
-	return prm_majority
-
-
-def get_params_baseline(mod, prm_com, prm_com_noeps):
-	# Baseline parameters construction
-	if mod.baselines_on:
-		prm_sup_only_basic = [[]]
-		if mod.sup_only_on:
-			prm_sup_only_basic[0] += \
-				[
-					#Sup-Only
-					#TODO: make sure the epsilon=0 setting propagates
-			 		{'algorithm':'Sup-Only',
-					 'warm_start_type': 1,
-					 'warm_start_update': True,
-					 'interaction_update': False,
-					 'epsilon': 0.0
-					 }
-				]
-
-		prm_oth_baseline_basic = [[]]
-		if mod.band_only_on:
-			prm_oth_baseline_basic[0] += \
-				[
-					#Band-Only
-	 		 		{'algorithm':'Bandit-Only',
-					 'warm_start_type': 1,
-	 				 'warm_start_update': False,
-	 				 'interaction_update': True}
-				]
-
-		if mod.sim_bandit_on:
-			prm_oth_baseline_basic[0] += \
-				[
-					#Sim-Bandit
-					{'algorithm':'Sim-Bandit',
-					 'warm_start_type': 2,
-					 'warm_start_update': True,
-				     'interaction_update': True,
-					 'lambda_scheme': 1}
-				]
-
-		#Sim-Bandit with only warm-start update
-		#(ideally, we need to set epsilon != 0 for the ws stage and epsilon = 0
-		#for the interaction stage, and it seems that we need to change warm_cb.cc:
-		#if interaction_update = False then we should use csoaa predict for interaction stage
-		#{'warm_start_type': 2,
-		# 'warm_start_update': True,
-		# 'interaction_update': False}
-
-		prm_baseline_const = \
-		[
-			[
-				{'weighting_scheme':1,
-				 'adf_on':True,
-				 'lambda_scheme':3,
-				 'choices_lambda':1}
-			]
-		]
-
-		prm_baseline = param_cartesian_multi([prm_com_noeps] + prm_baseline_const + prm_sup_only_basic) \
-		+ param_cartesian_multi([prm_com] + prm_baseline_const + prm_oth_baseline_basic)
-	else:
-		prm_baseline = []
-
-	return prm_baseline
-
 
 def get_params_task(params_all):
 	params_task = []
@@ -727,7 +295,7 @@ def main_loop(mod):
 	mod.full_tmplt = OrderedDict([ (item[0], item[2]) for item in RESULT_TMPLT ])
 	mod.simp_map = OrderedDict([ (item[0], item[1]) for item in RESULT_TMPLT ])
 	mod.sum_tmplt = OrderedDict([ (item, mod.full_tmplt[item]) for item in SUMMARY_TMPLT ])
-	mod.vwout_tmplt = OrderedDict([ (item, mod.full_tmplt[item]) for item in VW_OUTFILE_NAME_TMPLT ])
+	mod.vw_out_tmplt = OrderedDict([ (item, mod.full_tmplt[item]) for item in VW_OUTFILE_NAME_TMPLT ])
 	write_summary_header(mod)
 	for mod.param in mod.config_task:
 		run_single_expt(mod)
@@ -760,12 +328,12 @@ if __name__ == '__main__':
 	mod.vw_path = '../../vowpal_wabbit/vowpalwabbit/vw'
 	mod.ds_path = args.ds_dir
 	mod.results_path = args.results_dir
-	print 'reading dataset files..'
+	print('reading dataset files..')
 	#TODO: this line specifically for multiple folds
 	#Need a systematic way to detect subfolder names
 	mod.dss = ds_files(mod.ds_path + '1/')
 
-	print len(mod.dss)
+	print(len(mod.dss))
 
 	if args.num_datasets == -1 or args.num_datasets > len(mod.dss):
 		pass
@@ -808,12 +376,13 @@ if __name__ == '__main__':
 	#mod.dss = ["ds_223_63.vw.gz"]
 	#mod.dss = mod.dss[:5]
 
-	print 'generating tasks..'
+	print('generating tasks..')
 	# here, we are generating the task specific parameter settings
 	# by first generate all parameter setting and pick every num_tasks of them
-	mod.config_task = params_per_task(mod)
-	print 'task ' + str(mod.task_id) + ' of ' + str(mod.num_tasks) + ':'
-	print len(mod.config_task)
+	all_params = get_all_params(mod)
+	mod.config_task = get_params_task(all_params)
+	print('task ', str(mod.task_id), ' of ', str(mod.num_tasks), ':')
+	print(len(mod.config_task))
 
 	#print mod.ds_task
 	# we only need to vary the warm start fraction, and there is no need to vary the bandit fraction,
