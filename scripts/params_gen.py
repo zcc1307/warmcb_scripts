@@ -1,3 +1,5 @@
+from vw_commands_const import SIMP_MAP
+
 def merge_two_dicts(x, y):
 	#print 'x = ', x
 	#print 'y = ', y
@@ -130,6 +132,16 @@ def get_filters(mod):
 
 	return (fltr_inter_gt, fltr_ws_gt)
 
+def extend_alg_name(prm_algs):
+    extend_items = ['validation_method', 'weighting_scheme', 'choices_lambda']
+    for prm_alg in prm_algs:
+        if prm_alg['algorithm'] == 'AwesomeBandits':
+            for item in extend_items:
+                prm_alg['algorithm'] += (',' +  SIMP_MAP[item] + '=' + str(prm_alg[item]))
+
+    return prm_algs
+
+
 def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 	# Algorithm parameters construction
 	if mod.algs_on:
@@ -162,7 +174,8 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 					 'interaction_update': True,
 					 'warm_start_type': 1,
 					 'lambda_scheme': 4,
-					 'weighting_scheme': 1}
+					 'weighting_scheme': 1,
+                     'validation_method':1}
 				 ],
 			]
 		else:
@@ -171,6 +184,7 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 		prm_algs_ws_gt = param_cartesian_multi([prm_com_ws_gt] + [prm_choices_lbd] + prm_ws_gt)
 		prm_algs_inter_gt = param_cartesian_multi([prm_com_inter_gt] + [prm_choices_lbd] + prm_inter_gt)
 		prm_algs = prm_algs_ws_gt + prm_algs_inter_gt
+		prm_algs = extend_alg_name(prm_algs)
 	else:
 		prm_algs = []
 	return prm_algs
@@ -251,7 +265,8 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 		#(ideally, we need to set epsilon != 0 for the ws stage and epsilon = 0
 		#for the interaction stage, and it seems that we need to change warm_cb.cc:
 		#if interaction_update = False then we should use csoaa predict for interaction stage
-		#{'warm_start_type': 2,
+		#{'algorithm':'Sim-Bandit-Freeze',
+        #'warm_start_type': 2,
 		# 'warm_start_update': True,
 		# 'interaction_update': False}
 

@@ -8,7 +8,7 @@ import glob
 import re
 from collections import OrderedDict
 from params_gen import get_all_params, merge_two_dicts
-from vw_commands_const import RESULT_TMPLT, SUMMARY_TMPLT, VW_OUTFILE_NAME_TMPLT, VW_RUN_TMPLT_OPT, VW_RUN_TMPLT_MAJ, VW_RUN_TMPLT_WARMCB, VW_PROGRESS_PATTERN, VW_RESULT_TMPLT
+from vw_commands_const import VW_RUN_TMPLT_OPT, VW_RUN_TMPLT_MAJ, VW_RUN_TMPLT_WARMCB, VW_PROGRESS_PATTERN, VW_RESULT_TMPLT, FULL_TMPLT, SIMP_MAP, SUM_TMPLT, VW_OUT_TMPLT
 
 class model:
 	def __init__(self):
@@ -16,14 +16,14 @@ class model:
 		self.baselines_on = True
 		self.sup_only_on = True
 		self.band_only_on = True
-		self.sim_bandit_on = False
+		self.sim_bandit_on = True
 
 		self.algs_on = True
-		self.optimal_on = False
-		self.majority_on = False
+		self.optimal_on = True
+		self.majority_on = True
 
-		self.ws_gt_on = True
-		self.inter_gt_on = False
+		self.ws_gt_on = False
+		self.inter_gt_on = True
 
 		#self.num_checkpoints = 400
 		self.num_checkpoints = 200
@@ -285,17 +285,17 @@ def vw_output_extract(mod, pattern):
 	vw_output.close()
 	return avge
 
-def complete_header(simp_header):
-	simplified_keymap = OrderedDict([ (item[1], item[0]) for item in RESULT_TMPLT ])
-	return simplified_keymap[simp_header]
+#def complete_header(simp_header):
+#	simplified_keymap = OrderedDict([ (item[1], item[0]) for item in RESULT_TMPLT ])
+#	return simplified_keymap[simp_header]
 
 
 def main_loop(mod):
 	mod.summary_file_name = mod.results_path+str(mod.task_id)+'of'+str(mod.num_tasks)+'.sum'
-	mod.full_tmplt = OrderedDict([ (item[0], item[2]) for item in RESULT_TMPLT ])
-	mod.simp_map = OrderedDict([ (item[0], item[1]) for item in RESULT_TMPLT ])
-	mod.sum_tmplt = OrderedDict([ (item, mod.full_tmplt[item]) for item in SUMMARY_TMPLT ])
-	mod.vw_out_tmplt = OrderedDict([ (item, mod.full_tmplt[item]) for item in VW_OUTFILE_NAME_TMPLT ])
+	mod.full_tmplt = FULL_TMPLT
+	mod.simp_map = SIMP_MAP
+	mod.sum_tmplt = SUM_TMPLT
+	mod.vw_out_tmplt = VW_OUT_TMPLT
 	write_summary_header(mod)
 	for mod.param in mod.config_task:
 		run_single_expt(mod)

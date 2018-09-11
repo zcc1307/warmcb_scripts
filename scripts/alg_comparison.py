@@ -15,7 +15,7 @@ from matplotlib.font_manager import FontProperties
 from collections import Counter
 import random
 import math
-from alg_const import noise_type_str, alg_info, alg_str, alg_str_compatible, alg_color_style, alg_index
+from alg_const import noise_type_str, alg_str, alg_str_compatible, alg_color_style, alg_index
 
 pd.set_option('display.max_columns', 500)
 
@@ -99,12 +99,12 @@ def save_legend(mod, indices):
 	figlegend.savefig(mod.problemdir+'legend.pdf')
 
 def problem_str(name_problem):
-	return 'eps='+str(name_problem[5]) \
-			+'_sct='+str(name_problem[0]) \
+	return 'sct='+str(name_problem[0]) \
 			+'_scp='+str(name_problem[1]) \
 			+'_bct='+str(name_problem[2]) \
 			+'_bcp='+str(name_problem[3]) \
 			+'_ratio='+str(name_problem[4]) \
+			+'_eps='+str(name_problem[5])
 
 def problem_text(name_problem):
 	s=''
@@ -122,11 +122,11 @@ def plot_cdf(alg_name, errs):
 	plt.step(np.sort(errs), np.linspace(0, 1, len(errs), endpoint=False), label=alg_str(alg_name), color=col, linestyle=sty, linewidth=2.0)
 
 def plot_all_cdfs(alg_results, mod):
-	print 'printing cdfs..'
+	print('printing cdfs..')
 	indices = []
 	pylab.figure(figsize=(8,6))
 
-	for alg_name, errs in alg_results.iteritems():
+	for alg_name, errs in alg_results.items():
 		indices.append(alg_index(alg_name))
 		plot_cdf(alg_name, errs)
 
@@ -161,27 +161,27 @@ def plot_all_cdfs(alg_results, mod):
 def plot_all_lrs(lrs, mod):
 	alg_names = lrs.keys()
 
-	for i in range(len(alg_names)):
+	for alg in alg_names:
 		pylab.figure(figsize=(8,6))
-		lrs_alg = lrs[alg_names[i]]
+		lrs_alg = lrs[alg]
 		names = mod.learning_rates
 		values = [lrs_alg.count(n) for n in names]
 		plt.barh(range(len(names)),values)
 		plt.yticks(range(len(names)),names)
-		plt.savefig(mod.problemdir+alg_str_compatible(alg_names[i])+'_lr.pdf')
+		plt.savefig(mod.problemdir+alg_str_compatible(alg)+'_lr.pdf')
 		plt.clf()
 
 def plot_all_lambdas(lambdas, mod):
 	alg_names = lambdas.keys()
 
-	for i in range(len(alg_names)):
+	for alg in alg_names:
 		pylab.figure(figsize=(8,6))
-		lambdas_alg = lambdas[alg_names[i]]
+		lambdas_alg = lambdas[alg]
 		names = sorted(list(set(lambdas_alg)))
 		values = [lambdas_alg.count(n) for n in names]
 		plt.barh(range(len(names)),values)
 		plt.yticks(range(len(names)),names)
-		plt.savefig(mod.problemdir+alg_str_compatible(alg_names[i])+'_lambdas.pdf')
+		plt.savefig(mod.problemdir+alg_str_compatible(alg)+'_lambdas.pdf')
 		plt.clf()
 
 
@@ -194,7 +194,7 @@ def plot_all_pair_comp(alg_results, sizes, mod):
 				errs_1 = alg_results[alg_names[i]]
 				errs_2 = alg_results[alg_names[j]]
 
-				print len(errs_1), len(errs_2), len(sizes)
+				print(len(errs_1), len(errs_2), len(sizes))
 				num_wins_1, num_wins_2 = plot_comparison(errs_1, errs_2, sizes)
 				plt.title( 'total number of comparisons = ' + str(len(errs_1)) + '\n'+
 				alg_str(alg_names[i]) + ' wins ' + str(num_wins_1) + ' times, \n' + alg_str(alg_names[j]) + ' wins ' + str(num_wins_2) + ' times')
@@ -204,17 +204,18 @@ def plot_all_pair_comp(alg_results, sizes, mod):
 
 def normalize_score(unnormalized_result, mod):
 	if mod.normalize_type == 1:
-		l = get_best_error(mod.best_error_table, mod.name_dataset)
+		l = unnormalized_result['Optimal']
 		u = max(unnormalized_result.values())
-		return { k : ((v - l) / (u - l + 1e-4)) for k, v in unnormalized_result.iteritems() }
+		normalized = { k : ((v - l) / (u - l + 1e-4)) for k, v in unnormalized_result.items() }
 	elif mod.normalize_type == 2:
-		l = unnormalized_result[(1, 1, True, False)]
-		return { k : ((v - l) / (l + 1e-4)) for k, v in unnormalized_result.iteritems() }
+		l = unnormalized_result['Bandit-Only']
+		normalized = { k : ((v - l) / (l + 1e-4)) for k, v in unnormalized_result.items() }
 	elif mod.normalize_type == 3:
-		return unnormalized_result
+		normalized = unnormalized_result
 	elif mod.normalize_type == 4:
-		l = get_best_error(mod.best_error_table, mod.name_dataset)
-		return { k : (v - l) for k, v in unnormalized_result.iteritems() }
+		l = unnormalized_result['Optimal']
+		normalized = { k : (v - l) for k, v in unnormalized_result.items() }
+	return normalized
 
 def get_best_error(best_error_table, name_dataset):
 	name = name_dataset[0]
@@ -240,11 +241,7 @@ def get_unnormalized_results(result_table):
 			new_size = row['interaction']
 
 		if row['interaction'] == new_size:
-			alg_name = (row['warm_start_type'],
-			 			row['choices_lambda'],
-			 			row['warm_start_update'],
-			 			row['interaction_update'],
-			 			row['validation_method'])
+			alg_name = row['algorithm']
 			new_unnormalized_results[alg_name] = row['avg_error']
 			new_lr[alg_name] = row['learning_rate']
 			new_lambda[alg_name] = row['last_lambda']
@@ -254,9 +251,9 @@ def get_unnormalized_results(result_table):
 
 def update_result_dict(results_dict, new_result):
 	if len(new_result) != len(results_dict):
-		print 'Warning: length of the new record ( ', len(new_result), ' ) does not match the length of the existing dict ( ', len(results_dict), ' ); perhaps the input data is corrupted.'
+		print('Warning: length of the new record ( ', len(new_result), ' ) does not match the length of the existing dict ( ', len(results_dict), ' ); perhaps the input data is corrupted.')
 
-	for k, v in new_result.iteritems():
+	for k, v in new_result.items():
 		results_dict[k].append(v)
 
 
@@ -294,12 +291,8 @@ def plot_all(mod, all_results):
 			#print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ]
 			#raw_input('...')
 
-		 	group_dataset = group_dataset.reset_index(drop=True)
-			grouped_by_algorithm = group_dataset.groupby(['warm_start_type',
-			                                              'choices_lambda',
-														  'warm_start_update',
-														  'interaction_update',
-														  'validation_method'])
+			group_dataset = group_dataset.reset_index(drop=True)
+			grouped_by_algorithm = group_dataset.groupby(['algorithm'])
 			mod.name_dataset = name_dataset
 
 			#The 'learning_rate' would be the only free degree here now. Taking the
@@ -317,28 +310,25 @@ def plot_all(mod, all_results):
 				idx.append(global_idx)
 
 			result_table = group_dataset.ix[idx, :]
-
-			#print result_table
-			#raw_input('...')
+			#print(result_table)
 
 			#Record the error rates of all algorithms
 			new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
-
-			new_unnormalized_result[(0, 0, False, False, 1)] = get_maj_error(mod.maj_error_table, mod.name_dataset)
-			new_lr[(0, 0, False, False, 1)] = 0.0
-			new_lambda[(0, 0, False, False, 1)] = 0.0
 			new_normalized_result = normalize_score(new_unnormalized_result, mod)
 
-			#if len(new_lr) != 3:
-			#	continue
+			new_normalized_result.pop('Optimal', None)
+			new_lr.pop('Optimal', None)
+			new_lambda.pop('Optimal', None)
+			new_lr.pop('Most-Freq', None)
+			new_lambda.pop('Most-Freq', None)
 
 			#first time - generate names of algorithms considered
 			if normalized_results is None:
 				sizes = []
 				unnormalized_results = dict([(k,[]) for k in new_unnormalized_result.keys()])
-				normalized_results = dict([(k,[]) for k in new_unnormalized_result.keys()])
-				lrs = dict([(k,[]) for k in new_unnormalized_result.keys()])
-				lambdas = dict([(k,[]) for k in new_unnormalized_result.keys()])
+				normalized_results = dict([(k,[]) for k in new_normalized_result.keys()])
+				lrs = dict([(k,[]) for k in new_lr.keys()])
+				lambdas = dict([(k,[]) for k in new_lambda.keys()])
 
 			update_result_dict(unnormalized_results, new_unnormalized_result)
 			update_result_dict(normalized_results, new_normalized_result)
@@ -346,7 +336,7 @@ def plot_all(mod, all_results):
 			update_result_dict(lambdas, new_lambda)
 			sizes.append(new_size)
 
-		print normalized_results
+		print(normalized_results)
 
 		mod.problemdir = mod.fulldir+problem_str(mod.name_problem)+'/'
 		if not os.path.exists(mod.problemdir):
@@ -361,33 +351,33 @@ def plot_all(mod, all_results):
 		plot_all_lambdas(lambdas, mod)
 
 def save_to_hdf(mod):
-	print 'saving to hdf..'
+	print('saving to hdf..')
 	store = pd.HDFStore(mod.results_dir+'cache.h5')
 	store['result_table'] = mod.all_results
 	store.close()
 
 def load_from_hdf(mod):
-	print 'reading from hdf..'
+	print('reading from hdf..')
 	store = pd.HDFStore(mod.results_dir+'cache.h5')
 	mod.all_results = store['result_table']
 	store.close()
 
 def load_from_sum(mod):
-	print 'reading directory..'
+	print('reading directory..')
 	dss = sum_files(mod.results_dir)
 	results_arr = []
 
-	print 'reading sum tables..'
+	print('reading sum tables..')
 	for i in range(len(dss)):
-		print 'result file name: ', dss[i]
+		print('result file name: ', dss[i])
 		result = parse_sum_file(mod.results_dir + dss[i])
 		results_arr.append(result)
 
 	all_results = pd.concat(results_arr)
-	print all_results
+	#print(all_results)
 	mod.all_results = all_results
 
-def filter_results(modm, all_results):
+def filter_results(mod, all_results):
 	if mod.filter == '1':
 		pass
 	elif mod.filter == '2':
@@ -406,6 +396,56 @@ def filter_results(modm, all_results):
 		all_results = all_results[all_results['warm_start'] >= 100]
 		all_results = all_results[all_results['num_classes'] >= 3]
 
+	return all_results
+
+def propag_sup_only(all_results):
+	# propagate the epsilon value for Sup-Only
+	all_results['epsilon'] = all_results['epsilon'].astype(float)
+	uniq_eps = all_results['epsilon'].unique()
+	sup_only_results = all_results[all_results['algorithm'] == 'Sup-Only']
+	sup_only_augmented = []
+	for eps in uniq_eps:
+		sup_only_eps = sup_only_results.copy(deep=True)
+		sup_only_eps['epsilon'] = eps
+		sup_only_augmented.append(sup_only_eps)
+
+	sup_only_all_eps = pd.concat(sup_only_augmented)
+	all_results = pd.concat([all_results, sup_only_all_eps])
+	all_results = all_results[(all_results['epsilon'] != 0.0) | (all_results['algorithm'] != 'Sup-Only')]
+	return all_results
+
+def propag_opt_maj(all_results):
+	group_var = ['corrupt_type_warm_start',
+				  'corrupt_prob_warm_start',
+				  'corrupt_type_interaction',
+				  'corrupt_prob_interaction',
+				  'inter_ws_size_ratio',
+				  'epsilon',
+				  'warm_start',
+				  'interaction',
+				  'dataset']
+	grouped = all_results.groupby(group_var)
+	opt_maj_table = all_results[(all_results['algorithm'] == 'Optimal') | (all_results['algorithm'] == 'Most-Freq')]
+
+	opt_maj_augmented = []
+	for setting, section in grouped:
+		opt_maj_setting_orig = opt_maj_table[opt_maj_table['dataset'] == setting[8]]
+		opt_maj_setting = opt_maj_setting_orig.copy(deep=True)
+		opt_maj_setting[group_var] = setting
+		opt_maj_augmented.append(opt_maj_setting)
+
+	opt_maj_all = pd.concat(opt_maj_augmented)
+	all_results = pd.concat([all_results, opt_maj_all])
+	all_results = all_results[all_results['epsilon'] > 1e-4]
+	all_results = all_results[all_results['inter_ws_size_ratio'] > 1e-4]
+	return all_results
+
+
+def preprocess(all_results):
+	# propagate for Sup-Only
+	all_results = propag_sup_only(all_results)
+	# propagate for Most-Freq and Optimal
+	all_results = propag_opt_maj(all_results)
 	return all_results
 
 
@@ -430,8 +470,8 @@ if __name__ == '__main__':
 	mod.normalize_type = args.normalize_type
 	mod.pair_comp_on = False
 	mod.cdf_on = True
-	mod.maj_error_dir = '../../../old_figs/figs_all/expt_0509/figs_maj_errors/0of1.sum'
-	mod.best_error_dir = '../../../old_figs/figs_all/expt_0606/0of1.sum'
+	#mod.maj_error_dir = '../../../old_figs/figs_all/expt_0509/figs_maj_errors/0of1.sum'
+	#mod.best_error_dir = '../../../old_figs/figs_all/expt_0606/0of1.sum'
 
 	mod.fulldir = mod.results_dir + mod.plot_subdir
 	if not os.path.exists(mod.fulldir):
@@ -447,62 +487,17 @@ if __name__ == '__main__':
 		load_from_sum(mod)
 
 	all_results = mod.all_results
+	all_results = preprocess(all_results)
 	#ignore the choices_lambda = 4 row
-	all_results = all_results[(all_results['choices_lambda'] != 4)]
-	all_results = all_results[(all_results['choices_lambda'] != 8)]
-
-	all_results['epsilon'] = all_results['epsilon'].astype(float)
-	uniq_eps = all_results['epsilon'].unique()
-	sup_only_results = all_results[(all_results['warm_start_update'] == True) & (all_results['interaction_update'] == False) ]
-	sup_only_augmented = []
-	#print uniq_eps
-	for eps in uniq_eps:
-		sup_only_eps = sup_only_results.copy(deep=True)
-		sup_only_eps['epsilon'] = eps
-		#sup_only_eps = sup_only_results['epsilon'].apply(lambda x: eps)
-		#print sup_only_eps[(sup_only_eps['epsilon'] == 0.0125) & (sup_only_eps['warm_start_update'] == True) & (sup_only_eps['interaction_update'] == False)].shape
-
-		sup_only_augmented.append(sup_only_eps)
-		#print eps
-		#raw_input('..')
-
-	#(1.0, 0.0, 1.0, 0.0, 2.875, 0.0125)
-	#for tab in sup_only_augmented:
-	#	print tab
-	#	raw_input('..')
-
-	sup_only_all_eps = pd.concat(sup_only_augmented)
-	#print sup_only_all_eps[(sup_only_all_eps['epsilon'] == 0.0125) & (sup_only_all_eps['warm_start_update'] == True) & (sup_only_all_eps['interaction_update'] == False)].shape
-	all_results = pd.concat([all_results, sup_only_all_eps])
-	#all_results.append(sup_only_all_eps)
-	all_results = all_results[(all_results['epsilon'] != 0.0)]
-
-
-	#all_results = all_results[(all_results['warm_start_update'] == True) & (all_results['interaction_update'] == True)]
-	# Some of the summary files have broken records (incomplete rows)
+	#all_results = all_results[(all_results['choices_lambda'] != 4)]
+	#all_results = all_results[(all_results['choices_lambda'] != 8)]
 	all_results['learning_rate'] = all_results['learning_rate'].astype(float)
-	#print all_results[all_results.apply(lambda row: math.isnan(row['learning_rate']), axis=1)]
-	#raw_input('..')
 
-	#all_results['warm_start_type'] = all_results['warm_start_type'].astype(int)
-	#all_results['choices_lambda'] = all_results['choices_lambda'].astype(int)
-	#all_results['warm_start_update'] = all_results['warm_start_update'].astype(bool)
-	#all_results['interaction_update'] = all_results['interaction_update'].astype(bool)
-	#all_results['validation_method'] = all_results['validation_method'].astype(int)
-
-
-	#print all_results[(all_results['epsilon'] == 0.0125) & (all_results['warm_start_update'] == True) & (all_results['interaction_update'] == False)].shape
-	#raw_input('..')
-
-	mod.maj_error_table = parse_sum_file(mod.maj_error_dir)
-	mod.maj_error_table = mod.maj_error_table[mod.maj_error_table['majority_approx']]
-	mod.best_error_table = parse_sum_file(mod.best_error_dir)
-	mod.best_error_table = mod.best_error_table[mod.best_error_table['optimal_approx']]
-
-
+	#mod.maj_error_table = parse_sum_file(mod.maj_error_dir)
+	#mod.maj_error_table = mod.maj_error_table[mod.maj_error_table['majority_approx']]
+	#mod.best_error_table = parse_sum_file(mod.best_error_dir)
+	#mod.best_error_table = mod.best_error_table[mod.best_error_table['optimal_approx']]
 	mod.learning_rates = sorted(all_results.learning_rate.unique())
-
-
 	all_results = filter_results(mod, all_results)
 
 	plot_all(mod, all_results)

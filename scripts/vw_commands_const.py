@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 RESULT_TMPLT = \
 	[
 	('fold', 'fd', 0),
@@ -51,10 +53,8 @@ SUMMARY_TMPLT = \
 	'inter_ws_size_ratio',
 	'adf_on',
 	'algorithm',
-	'choices_lambda',
-	'validation_method',
-	'weighting_scheme',
 	'lambda_scheme',
+    'choices_lambda',
 	'epsilon',
 	'loss0',
 	'loss1',
@@ -64,6 +64,9 @@ SUMMARY_TMPLT = \
 	'ideal_variance',
 	'last_lambda'
 	]
+	#'choices_lambda',
+	#'validation_method',
+	#'weighting_scheme',
 
 VW_OUTFILE_NAME_TMPLT = \
 	['dataset',
@@ -151,3 +154,8 @@ VW_RESULT_TMPLT = \
 	'ideal_variance': 0.0,
 	'last_lambda':0.0
 	}
+
+FULL_TMPLT = OrderedDict([ (item[0], item[2]) for item in RESULT_TMPLT ])
+SIMP_MAP = OrderedDict([ (item[0], item[1]) for item in RESULT_TMPLT ])
+SUM_TMPLT = OrderedDict([ (item, FULL_TMPLT[item]) for item in SUMMARY_TMPLT ])
+VW_OUT_TMPLT = OrderedDict([ (item, FULL_TMPLT[item]) for item in VW_OUTFILE_NAME_TMPLT ])
