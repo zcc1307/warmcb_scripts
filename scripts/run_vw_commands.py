@@ -190,7 +190,7 @@ def replace_keys(dic, simplified_keymap):
 		dic_new[simplified_keymap[k]] = v
 	return dic_new
 
-def get_vw_out_name(mod):
+def get_vw_out_filename(mod):
 	# step 1: use the above as a template to filter out irrelevant parameters
 	param_formatted = format_setting(mod.vw_out_tmplt, mod.param)
 	# step 2: replace the key names with the simplified names
@@ -204,7 +204,7 @@ def run_single_expt(mod):
 	mod.param['majority_size'], mod.param['majority_class'] = get_majority_class(mod.param['data'])
 	mod.param['progress'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
 	mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
-	mod.vw_output_filename = mod.vw_output_dir + get_vw_out_name(mod) + '.txt'
+	mod.vw_output_filename = mod.vw_output_dir + get_vw_out_filename(mod) + '.txt'
 
 	execute_vw(mod)
 	vw_run_results = analyze_vw_out(mod)

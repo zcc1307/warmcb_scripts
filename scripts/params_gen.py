@@ -134,16 +134,17 @@ def get_filters(mod):
 	return (fltr_inter_gt, fltr_ws_gt)
 
 def extend_alg_name(prm_algs):
-    asb_items = ['validation_method', 'weighting_scheme', 'choices_lambda', 'lambda_scheme']
-    optional_items = ['epsilon', 'eps_t']
+    asb_items = ['validation_method', 'weighting_scheme', 'choices_lambda']
+    expl_items = ['epsilon', 'eps_t']
     for prm_alg in prm_algs:
         if prm_alg['algorithm'] == 'AwesomeBandits':
             for item in asb_items:
                 prm_alg['algorithm'] += (',' +  SIMP_MAP[item] + '=' + str(prm_alg[item]))
-        #note that this must appear after the first if condition
-        for item in optional_items:
+
+        prm_alg['explore_method'] = 'expl'
+        for item in expl_items:
             if item in prm_alg:
-                prm_alg['algorithm'] += (',' +  SIMP_MAP[item] + '=' + str(prm_alg[item]))
+                prm_alg['explore_method'] += (',' + SIMP_MAP[item] + '=' + str(prm_alg[item]))
 
     return prm_algs
 
