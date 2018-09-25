@@ -36,6 +36,7 @@ RESULT_TMPLT = \
 	('actual_variance', 'av', 0.0),
 	('ideal_variance', 'iv', 0.0),
 	('last_lambda', 'll', 0.0),
+    ('problem_setting', 'ps', '')
 	]
 	#('optimal_approx', 'oa', False),
 	#('majority_approx', 'ma', False),
@@ -46,13 +47,9 @@ SUMMARY_TMPLT = \
 	'num_classes',
 	'total_size',
 	'majority_size',
-	'corrupt_type_warm_start',
-	'corrupt_prob_warm_start',
-	'corrupt_type_interaction',
-	'corrupt_prob_interaction',
 	'warm_start',
 	'interaction',
-	'inter_ws_size_ratio',
+    'problem_setting',
 	'adf_on',
 	'algorithm',
     'lambda_scheme',
@@ -65,6 +62,11 @@ SUMMARY_TMPLT = \
 	'ideal_variance',
 	'last_lambda'
 	]
+	#'corrupt_type_warm_start',
+	#'corrupt_prob_warm_start',
+	#'corrupt_type_interaction',
+	#'corrupt_prob_interaction',
+    #'inter_ws_size_ratio',
 	#'choices_lambda',
 	#'validation_method',
 	#'weighting_scheme',

@@ -98,7 +98,6 @@ def get_all_params(mod):
     prm_all = param_cartesian_multi(
     [prm_dataset,
      prm_baseline + prm_alg + prm_opt + prm_maj])
-    prm_all = extend_alg_name(prm_all)
 
     prm_all = sorted(prm_all,
     					key=lambda d: (d['dataset'],
@@ -132,22 +131,6 @@ def get_filters(mod):
 		fltr_ws_gt = lambda p: False
 
 	return (fltr_inter_gt, fltr_ws_gt)
-
-def extend_alg_name(prm_algs):
-    asb_items = ['validation_method', 'weighting_scheme', 'choices_lambda']
-    expl_items = ['epsilon', 'eps_t']
-    for prm_alg in prm_algs:
-        if prm_alg['algorithm'] == 'AwesomeBandits':
-            for item in asb_items:
-                prm_alg['algorithm'] += (',' +  SIMP_MAP[item] + '=' + str(prm_alg[item]))
-
-        prm_alg['explore_method'] = 'expl'
-        for item in expl_items:
-            if item in prm_alg:
-                prm_alg['explore_method'] += (',' + SIMP_MAP[item] + '=' + str(prm_alg[item]))
-
-    return prm_algs
-
 
 def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 	# Algorithm parameters construction

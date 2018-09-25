@@ -59,11 +59,11 @@ def plot_comparison(errors_1, errors_2, sizes):
     #print title
     plt.plot([0,1],[0,1])
     z_scores = get_z_scores(errors_1, errors_2, sizes)
-    sorted_z_scores = sorted(enumerate(z_scores), key=lambda x:x[1])
 
-    significance = map(is_significant, z_scores)
+    significance = list(map(is_significant, z_scores))
     results_signi_1 = list(compress(errors_1, significance))
     results_signi_2 = list(compress(errors_2, significance))
+
     plt.scatter(results_signi_1, results_signi_2, s=18, c='r')
 
     insignificance = [not b for b in significance]
@@ -97,25 +97,10 @@ def save_legend(mod, indices):
     figlegend.legend(handles, labels, 'center', fontsize=26, ncol=3)
     figlegend.tight_layout(pad=0)
     figlegend.savefig(mod.problemdir+'legend.pdf')
+    plt.close()
 
 def problem_str(name_problem):
-    return 'sct='+str(name_problem[0]) \
-            +'_scp='+str(name_problem[1]) \
-            +'_bct='+str(name_problem[2]) \
-            +'_bcp='+str(name_problem[3]) \
-            +'_ratio='+str(name_problem[4]) \
-            +'_eps='+str(name_problem[5])
-
-def problem_text(name_problem):
-    s=''
-    s += 'Ratio = ' + str(name_problem[2]) + ', '
-    if abs(name_problem[1]) < 1e-6:
-        s += 'noiseless'
-    else:
-        s += noise_type_str(name_problem[0]) + ', '
-        s += 'p = ' + str(name_problem[1])
-    return s
-
+    return name_problem[0] + '_' + name_problem[1]
 
 def plot_cdf(alg_name, errs):
     col, sty = alg_color_style(alg_name)
@@ -156,7 +141,7 @@ def plot_all_cdfs(alg_results, mod):
     ax.legend_.remove()
     plt.savefig(mod.problemdir+'cdf_nolegend.pdf')
     save_legend(mod, indices)
-    plt.clf()
+    plt.close()
 
 def plot_all_lrs(lrs, mod):
     alg_names = lrs.keys()
@@ -169,7 +154,7 @@ def plot_all_lrs(lrs, mod):
         plt.barh(range(len(names)),values)
         plt.yticks(range(len(names)),names)
         plt.savefig(mod.problemdir+alg_str_compatible(alg)+'_lr.pdf')
-        plt.clf()
+        plt.close()
 
 def plot_all_lambdas(lambdas, mod):
     alg_names = lambdas.keys()
@@ -182,11 +167,11 @@ def plot_all_lambdas(lambdas, mod):
         plt.barh(range(len(names)),values)
         plt.yticks(range(len(names)),names)
         plt.savefig(mod.problemdir+alg_str_compatible(alg)+'_lambdas.pdf')
-        plt.clf()
+        plt.close()
 
 
 def plot_all_pair_comp(alg_results, sizes, mod):
-    alg_names = alg_results.keys()
+    alg_names = list(alg_results)
 
     for i in range(len(alg_names)):
         for j in range(len(alg_names)):
@@ -194,12 +179,12 @@ def plot_all_pair_comp(alg_results, sizes, mod):
                 errs_1 = alg_results[alg_names[i]]
                 errs_2 = alg_results[alg_names[j]]
 
-                print(len(errs_1), len(errs_2), len(sizes))
+                #print(len(errs_1), len(errs_2), len(sizes))
                 num_wins_1, num_wins_2 = plot_comparison(errs_1, errs_2, sizes)
                 plt.title( 'total number of comparisons = ' + str(len(errs_1)) + '\n'+
                 alg_str(alg_names[i]) + ' wins ' + str(num_wins_1) + ' times, \n' + alg_str(alg_names[j]) + ' wins ' + str(num_wins_2) + ' times')
                 plt.savefig(mod.problemdir+alg_str_compatible(alg_names[i])+'_vs_'+alg_str_compatible(alg_names[j])+'.pdf')
-                plt.clf()
+                plt.close()
 
 
 def normalize_score(unnormalized_result, mod):
@@ -256,17 +241,11 @@ def update_result_dict(results_dict, new_result):
     for k, v in new_result.items():
         results_dict[k].append(v)
 
-
 def plot_all(mod, all_results):
     #Group level 1: corruption mode, corruption prob, warm start - bandit ratio (each group corresponds to one cdf plot)
-    grouped_by_problem = all_results.groupby(['corrupt_type_warm_start',
-                                              'corrupt_prob_warm_start',
-                                              'corrupt_type_interaction',
-                                              'corrupt_prob_interaction',
-                                              'inter_ws_size_ratio',
+    grouped_by_problem = all_results.groupby(['problem_setting',
                                               'explore_method'])
 
-    #Group level 2: datasets, warm start length (corresponds to each point in cdf)
     for name_problem, group_problem in grouped_by_problem:
         normalized_results = None
         unnormalized_results = None
@@ -278,10 +257,10 @@ def plot_all(mod, all_results):
         #print group_problem[(group_problem['warm_start_update'] == True) & (group_problem['interaction_update'] == False) ].shape
         #raw_input('...')
 
+        #Group level 2: datasets, warm start length (corresponds to each point in cdf)
         grouped_by_dataset = group_problem.groupby(['dataset',
                                                     'warm_start'])
 
-        #Group level 3: algorithms
         for name_dataset, group_dataset in grouped_by_dataset:
             result_table = group_dataset
 
@@ -290,29 +269,9 @@ def plot_all(mod, all_results):
             #print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ].shape
             #print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ]
             #raw_input('...')
-
-            group_dataset = group_dataset.reset_index(drop=True)
-            grouped_by_algorithm = group_dataset.groupby(['algorithm'])
-            mod.name_dataset = name_dataset
-
-            #The 'learning_rate' would be the only free degree here now. Taking the
-            #min aggregation will give us the algorithms we are evaluating.
-            #In the future this should be changed if we run multiple folds: we
-            #should average among folds before choosing the min
-            idx = []
-
-            for name_alg, group_alg in grouped_by_algorithm:
-                min_error = group_alg['avg_error'].min()
-                min_error_rows = group_alg[group_alg['avg_error'] == min_error]
-                num_min_error_rows = min_error_rows.shape[0]
-                local_idx = random.randint(0, num_min_error_rows-1)
-                global_idx = min_error_rows.index[local_idx]
-                idx.append(global_idx)
-
-            result_table = group_dataset.ix[idx, :]
             #print(result_table)
-
             #Record the error rates of all algorithms
+            #Group level 3: algorithms
             new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
             if len(new_unnormalized_result) != 7:
                 continue
@@ -408,26 +367,24 @@ def propag_sup_only(sup_only, other):
     uniq_em = other['explore_method'].unique()
     sup_only_propag = []
     for em in uniq_em:
-        sup_only_em = sup_only_results.copy(deep=True)
+        sup_only_em = sup_only.copy(deep=True)
         sup_only_em['explore_method'] = em
         sup_only_propag.append(sup_only_em)
     return pd.concat(sup_only_propag)
 
 def cartesian(df1, df2):
-    df1['tmp_key'] = 0
-    df2['tmp_key'] = 0
-    prod = df1.merge(df2, how='left', on = 'tmp_key')
+    df1_copy = df1.copy()
+    df2_copy = df2.copy()
+    df1_copy['tmp_key'] = 0
+    df2_copy['tmp_key'] = 0
+    prod = df1_copy.merge(df2_copy, how='left', on = 'tmp_key')
     prod.drop('tmp_key', 1, inplace=True)
     return prod
 
 def propag_opt_maj(opt_maj, other):
     grouped = other.groupby(['dataset'])
     opt_maj_propag = []
-    repl_var = [  'corrupt_type_warm_start',
-                  'corrupt_prob_warm_start',
-                  'corrupt_type_interaction',
-                  'corrupt_prob_interaction',
-                  'inter_ws_size_ratio',
+    repl_var = [  'problem_setting',
                   'explore_method',
                   'warm_start',
                   'interaction']
@@ -435,7 +392,7 @@ def propag_opt_maj(opt_maj, other):
         #print(ds)
         subt = subtable[repl_var]
         uniq_subt = subt.drop_duplicates()
-        opt_maj_ds = opt_maj[opt_maj_table['dataset'] == ds]
+        opt_maj_ds = opt_maj[opt_maj['dataset'] == ds]
         opt_maj_ds = opt_maj_ds.drop(repl_var, axis=1)
         #print("opt_maj_ds = ", opt_maj_ds)
         #print("uniq_subt = ", uniq_subt)
@@ -462,9 +419,17 @@ def propagate(all_res):
     prop_opt_maj = propag_opt_maj(opt_maj, other)
     #all_results = propag_opt_maj(all_results)
     print('propagating complete')
-    prop_res = pd.concat([other, prop_opt_maj, prop_sup_only])
+
+    prop_res = pd.concat([other, prop_opt_maj, prop_sup_only], sort=True)
     return prop_res
 
+def avg_folds(all_res):
+    excl = list(filter(lambda item: item != 'fold' and item != 'avg_error', list(all_res)))
+    return all_res.groupby(excl).mean().reset_index()
+
+def tune_lr(all_res):
+    excl = list(filter(lambda item: item != 'learning_rate' and item != 'avg_error', list(all_res)))
+    return all_res[ all_res.groupby(excl)['avg_error'].rank(method='average') == 1 ]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='result summary')
@@ -473,6 +438,7 @@ if __name__ == '__main__':
     parser.add_argument('--plot_subdir', default='expt1/')
     parser.add_argument('--cached', action='store_true')
     parser.add_argument('--normalize_type', type=int, default=1)
+    parser.add_argument('--pair_comp', action='store_true')
     #1: normalized score;
     #2: bandit only centered score;
     #3: raw score
@@ -485,7 +451,7 @@ if __name__ == '__main__':
     mod.filter = args.filter
     mod.plot_subdir = args.plot_subdir
     mod.normalize_type = args.normalize_type
-    mod.pair_comp_on = False
+    mod.pair_comp_on = args.pair_comp
     mod.cdf_on = True
     #mod.maj_error_dir = '../../../old_figs/figs_all/expt_0509/figs_maj_errors/0of1.sum'
     #mod.best_error_dir = '../../../old_figs/figs_all/expt_0606/0of1.sum'
@@ -505,16 +471,13 @@ if __name__ == '__main__':
 
     all_results = mod.all_results
     all_results = propagate(all_results)
+    all_results = avg_folds(all_results)
+    all_results = tune_lr(all_results)
     #all_results = all_results[all_results['corrupt_prob_warm_start'] < 0.6]
     #ignore the choices_lambda = 4 row
     #all_results = all_results[(all_results['choices_lambda'] != 4)]
     #all_results = all_results[(all_results['choices_lambda'] != 8)]
     all_results['learning_rate'] = all_results['learning_rate'].astype(float)
-
-    #mod.maj_error_table = parse_sum_file(mod.maj_error_dir)
-    #mod.maj_error_table = mod.maj_error_table[mod.maj_error_table['majority_approx']]
-    #mod.best_error_table = parse_sum_file(mod.best_error_dir)
-    #mod.best_error_table = mod.best_error_table[mod.best_error_table['optimal_approx']]
     mod.learning_rates = sorted(all_results.learning_rate.unique())
     all_results = filter_results(mod, all_results)
 
