@@ -37,79 +37,80 @@ def dictify(param_name, param_choices):
 
 
 def get_all_params(mod):
-	# Problem parameters
-	prm_cor_type_ws = dictify('corrupt_type_warm_start', mod.choices_cor_type_ws)
-	prm_cor_prob_ws = dictify('corrupt_prob_warm_start', mod.choices_cor_prob_ws)
-	prm_cor_type_inter = dictify('corrupt_type_interaction', mod.choices_cor_type_inter)
-	prm_cor_prob_inter = dictify('corrupt_prob_interaction', mod.choices_cor_prob_inter)
-	prm_ws_multiplier = dictify('warm_start_multiplier', mod.ws_multipliers)
-	prm_lrs = dictify('learning_rate', mod.learning_rates)
-	# could potentially induce a bug if the maj and best does not have this parameter
-	prm_fold = dictify('fold', mod.folds)
-	# Algorithm parameters
-	prm_cb_type = dictify('cb_type', mod.choices_cb_type)
-	prm_dataset = dictify('dataset', mod.dss)
-	prm_choices_lbd = dictify('choices_lambda', mod.choices_choices_lambda)
-	prm_choices_eps = dictify('epsilon', mod.choices_epsilon)
-	prm_adf_on = dictify('adf_on', mod.choices_adf)
-	prm_loss_enc = dictify(('loss0', 'loss1'), mod.choices_loss_enc)
+    # Problem parameters
+    prm_cor_type_ws = dictify('corrupt_type_warm_start', mod.choices_cor_type_ws)
+    prm_cor_prob_ws = dictify('corrupt_prob_warm_start', mod.choices_cor_prob_ws)
+    prm_cor_type_inter = dictify('corrupt_type_interaction', mod.choices_cor_type_inter)
+    prm_cor_prob_inter = dictify('corrupt_prob_interaction', mod.choices_cor_prob_inter)
+    prm_ws_multiplier = dictify('warm_start_multiplier', mod.ws_multipliers)
+    prm_lrs = dictify('learning_rate', mod.learning_rates)
+    # could potentially induce a bug if the maj and best does not have this parameter
+    prm_fold = dictify('fold', mod.folds)
+    # Algorithm parameters
+    prm_cb_type = dictify('cb_type', mod.choices_cb_type)
+    prm_dataset = dictify('dataset', mod.dss)
+    prm_choices_lbd = dictify('choices_lambda', mod.choices_choices_lambda)
+    prm_choices_eps = dictify('epsilon', mod.choices_epsilon) + dictify('eps_t', mod.choices_eps_t)
+    prm_adf_on = dictify('adf_on', mod.choices_adf)
+    prm_loss_enc = dictify(('loss0', 'loss1'), mod.choices_loss_enc)
 
-	# Common parameters
+    # Common parameters
 
-	# Corruption parameters
-	prm_cor = param_cartesian_multi(
-	[prm_cor_type_ws,
-	 prm_cor_prob_ws,
-	 prm_cor_type_inter,
-	 prm_cor_prob_inter])
-	fltr_inter_gt, fltr_ws_gt = get_filters(mod)
-	prm_cor = filter(lambda p: (fltr_ws_gt(p) or fltr_inter_gt(p)), prm_cor)
+    # Corruption parameters
+    prm_cor = param_cartesian_multi(
+    [prm_cor_type_ws,
+     prm_cor_prob_ws,
+     prm_cor_type_inter,
+     prm_cor_prob_inter])
+    fltr_inter_gt, fltr_ws_gt = get_filters(mod)
+    prm_cor = filter(lambda p: (fltr_ws_gt(p) or fltr_inter_gt(p)), prm_cor)
 
-	prm_com_noeps = param_cartesian_multi(
-	[prm_cor,
-	 prm_ws_multiplier,
-	 prm_lrs,
-	 prm_cb_type,
-	 prm_fold,
-	 prm_adf_on,
-	 prm_loss_enc])
+    prm_com_noeps = param_cartesian_multi(
+    [prm_cor,
+     prm_ws_multiplier,
+     prm_lrs,
+     prm_cb_type,
+     prm_fold,
+     prm_adf_on,
+     prm_loss_enc])
 
-	prm_com = param_cartesian(prm_com_noeps, prm_choices_eps)
-	prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
-	prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
+    prm_com = param_cartesian(prm_com_noeps, prm_choices_eps)
+    prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
+    prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
 
-	prm_baseline = get_params_baseline(mod, prm_com, prm_com_noeps)
-	prm_alg = get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd)
-	prm_opt = get_params_opt(mod)
-	prm_maj = get_params_maj(mod)
+    prm_baseline = get_params_baseline(mod, prm_com, prm_com_noeps)
+    prm_alg = get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd)
+    prm_opt = get_params_opt(mod)
+    prm_maj = get_params_maj(mod)
 
-	#for p in params_common:
-	#	print p
-	#for p in params_baseline:
-	#	print p
-	#print len(prm_com_ws_gt), len(prm_algs_ws_gt)
-	#print len(prm_com_inter_gt), len(prm_algs_inter_gt)
-	#print len(prm_com)
-	#print len(prm_baseline)
-	#print len(prm_algs)
-	#raw_input('..')
+    #for p in params_common:
+    #	print p
+    #for p in params_baseline:
+    #	print p
+    #print len(prm_com_ws_gt), len(prm_algs_ws_gt)
+    #print len(prm_com_inter_gt), len(prm_algs_inter_gt)
+    #print len(prm_com)
+    #print len(prm_baseline)
+    #print len(prm_algs)
+    #raw_input('..')
 
-	# Common factor in all 3 groups: dataset
-	prm_all = param_cartesian_multi(
-	[prm_dataset,
-	 prm_baseline + prm_alg + prm_opt + prm_maj])
+    # Common factor in all 3 groups: dataset
+    prm_all = param_cartesian_multi(
+    [prm_dataset,
+     prm_baseline + prm_alg + prm_opt + prm_maj])
+    prm_all = extend_alg_name(prm_all)
 
-	prm_all = sorted(prm_all,
-						key=lambda d: (d['dataset'],
-						               d['corrupt_type_warm_start'],
-									   d['corrupt_prob_warm_start'],
-									   d['corrupt_type_interaction'],
-									   d['corrupt_prob_interaction'])
-					 )
-	print('The total number of VW commands to run is: ', len(prm_all))
-	for row in prm_all:
-		print(row)
-	return prm_all
+    prm_all = sorted(prm_all,
+    					key=lambda d: (d['dataset'],
+    					               d['corrupt_type_warm_start'],
+    								   d['corrupt_prob_warm_start'],
+    								   d['corrupt_type_interaction'],
+    								   d['corrupt_prob_interaction'])
+    				 )
+    print('The total number of VW commands to run is: ', len(prm_all))
+    for row in prm_all:
+    	print(row)
+    return prm_all
 
 def get_filters(mod):
 	if mod.inter_gt_on:
@@ -133,10 +134,15 @@ def get_filters(mod):
 	return (fltr_inter_gt, fltr_ws_gt)
 
 def extend_alg_name(prm_algs):
-    extend_items = ['validation_method', 'weighting_scheme', 'choices_lambda']
+    asb_items = ['validation_method', 'weighting_scheme', 'choices_lambda', 'lambda_scheme']
+    optional_items = ['epsilon', 'eps_t']
     for prm_alg in prm_algs:
         if prm_alg['algorithm'] == 'AwesomeBandits':
-            for item in extend_items:
+            for item in asb_items:
+                prm_alg['algorithm'] += (',' +  SIMP_MAP[item] + '=' + str(prm_alg[item]))
+        #note that this must appear after the first if condition
+        for item in optional_items:
+            if item in prm_alg:
                 prm_alg['algorithm'] += (',' +  SIMP_MAP[item] + '=' + str(prm_alg[item]))
 
     return prm_algs
@@ -173,9 +179,15 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 					 'warm_start_update': True,
 					 'interaction_update': True,
 					 'warm_start_type': 1,
-					 'lambda_scheme': 4,
 					 'weighting_scheme': 1,
-                     'validation_method':1}
+                     'validation_method': 1,
+ 					 # for time-varying epsilon
+					 'eps_t':0.1,
+					 'lambda_scheme': 2,
+					 # for fixed epsilon
+					 #'epsilon': 0.05,
+					 #'lambda_scheme': 4
+					 }
 				 ],
 			]
 		else:
@@ -184,7 +196,6 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 		prm_algs_ws_gt = param_cartesian_multi([prm_com_ws_gt] + [prm_choices_lbd] + prm_ws_gt)
 		prm_algs_inter_gt = param_cartesian_multi([prm_com_inter_gt] + [prm_choices_lbd] + prm_inter_gt)
 		prm_algs = prm_algs_ws_gt + prm_algs_inter_gt
-		prm_algs = extend_alg_name(prm_algs)
 	else:
 		prm_algs = []
 	return prm_algs
@@ -247,7 +258,8 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 	 		 		{'algorithm':'Bandit-Only',
 					 'warm_start_type': 1,
 	 				 'warm_start_update': False,
-	 				 'interaction_update': True}
+	 				 'interaction_update': True
+					 }
 				]
 
 		if mod.sim_bandit_on:
@@ -258,7 +270,8 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 					 'warm_start_type': 2,
 					 'warm_start_update': True,
 				     'interaction_update': True,
-					 'lambda_scheme': 1}
+					 'lambda_scheme': 1
+					 }
 				]
 
 		#Sim-Bandit with only warm-start update
@@ -275,7 +288,6 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 			[
 				{'weighting_scheme':1,
 				 'adf_on':True,
-				 'lambda_scheme':3,
 				 'choices_lambda':1}
 			]
 		]

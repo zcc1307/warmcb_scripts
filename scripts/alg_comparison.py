@@ -258,97 +258,101 @@ def update_result_dict(results_dict, new_result):
 
 
 def plot_all(mod, all_results):
-	#Group level 1: corruption mode, corruption prob, warm start - bandit ratio (each group corresponds to one cdf plot)
-	grouped_by_problem = all_results.groupby(['corrupt_type_warm_start',
-											  'corrupt_prob_warm_start',
-											  'corrupt_type_interaction',
-											  'corrupt_prob_interaction',
-											  'inter_ws_size_ratio',
-											  'epsilon'])
+    #Group level 1: corruption mode, corruption prob, warm start - bandit ratio (each group corresponds to one cdf plot)
+    grouped_by_problem = all_results.groupby(['corrupt_type_warm_start',
+    										  'corrupt_prob_warm_start',
+    										  'corrupt_type_interaction',
+    										  'corrupt_prob_interaction',
+    										  'inter_ws_size_ratio',
+    										  'epsilon'])
 
-	#Group level 2: datasets, warm start length (corresponds to each point in cdf)
-	for name_problem, group_problem in grouped_by_problem:
-		normalized_results = None
-		unnormalized_results = None
-		sizes = None
-		mod.name_problem = name_problem
+    #Group level 2: datasets, warm start length (corresponds to each point in cdf)
+    for name_problem, group_problem in grouped_by_problem:
+    	normalized_results = None
+    	unnormalized_results = None
+    	sizes = None
+    	mod.name_problem = name_problem
 
-		#print 'in group_problem:'
-		#print name_problem
-		#print group_problem[(group_problem['warm_start_update'] == True) & (group_problem['interaction_update'] == False) ].shape
-		#raw_input('...')
+    	#print 'in group_problem:'
+    	#print name_problem
+    	#print group_problem[(group_problem['warm_start_update'] == True) & (group_problem['interaction_update'] == False) ].shape
+    	#raw_input('...')
 
-		grouped_by_dataset = group_problem.groupby(['dataset',
-													'warm_start'])
+    	grouped_by_dataset = group_problem.groupby(['dataset',
+    												'warm_start'])
 
-		#Group level 3: algorithms
-		for name_dataset, group_dataset in grouped_by_dataset:
-			result_table = group_dataset
+    	#Group level 3: algorithms
+    	for name_dataset, group_dataset in grouped_by_dataset:
+    		result_table = group_dataset
 
-			#print 'in group_dataset:'
-			#print name_dataset
-			#print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ].shape
-			#print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ]
-			#raw_input('...')
+    		#print 'in group_dataset:'
+    		#print name_dataset
+    		#print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ].shape
+    		#print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ]
+    		#raw_input('...')
 
-			group_dataset = group_dataset.reset_index(drop=True)
-			grouped_by_algorithm = group_dataset.groupby(['algorithm'])
-			mod.name_dataset = name_dataset
+    		group_dataset = group_dataset.reset_index(drop=True)
+    		grouped_by_algorithm = group_dataset.groupby(['algorithm'])
+    		mod.name_dataset = name_dataset
 
-			#The 'learning_rate' would be the only free degree here now. Taking the
-			#min aggregation will give us the algorithms we are evaluating.
-			#In the future this should be changed if we run multiple folds: we
-			#should average among folds before choosing the min
-			idx = []
+    		#The 'learning_rate' would be the only free degree here now. Taking the
+    		#min aggregation will give us the algorithms we are evaluating.
+    		#In the future this should be changed if we run multiple folds: we
+    		#should average among folds before choosing the min
+    		idx = []
 
-			for name_alg, group_alg in grouped_by_algorithm:
-				min_error = group_alg['avg_error'].min()
-				min_error_rows = group_alg[group_alg['avg_error'] == min_error]
-				num_min_error_rows = min_error_rows.shape[0]
-				local_idx = random.randint(0, num_min_error_rows-1)
-				global_idx = min_error_rows.index[local_idx]
-				idx.append(global_idx)
+    		for name_alg, group_alg in grouped_by_algorithm:
+    			min_error = group_alg['avg_error'].min()
+    			min_error_rows = group_alg[group_alg['avg_error'] == min_error]
+    			num_min_error_rows = min_error_rows.shape[0]
+    			local_idx = random.randint(0, num_min_error_rows-1)
+    			global_idx = min_error_rows.index[local_idx]
+    			idx.append(global_idx)
 
-			result_table = group_dataset.ix[idx, :]
-			#print(result_table)
+    		result_table = group_dataset.ix[idx, :]
+    		#print(result_table)
 
-			#Record the error rates of all algorithms
-			new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
-			new_normalized_result = normalize_score(new_unnormalized_result, mod)
+    		#Record the error rates of all algorithms
+    		new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
+    		if len(new_unnormalized_result) != 7:
+    			continue
+    		new_normalized_result = normalize_score(new_unnormalized_result, mod)
 
-			new_normalized_result.pop('Optimal', None)
-			new_lr.pop('Optimal', None)
-			new_lambda.pop('Optimal', None)
-			new_lr.pop('Most-Freq', None)
-			new_lambda.pop('Most-Freq', None)
+    		new_normalized_result.pop('Optimal', None)
+    		new_lr.pop('Optimal', None)
+    		new_lambda.pop('Optimal', None)
+    		new_lr.pop('Most-Freq', None)
+    		new_lambda.pop('Most-Freq', None)
 
-			#first time - generate names of algorithms considered
-			if normalized_results is None:
-				sizes = []
-				unnormalized_results = dict([(k,[]) for k in new_unnormalized_result.keys()])
-				normalized_results = dict([(k,[]) for k in new_normalized_result.keys()])
-				lrs = dict([(k,[]) for k in new_lr.keys()])
-				lambdas = dict([(k,[]) for k in new_lambda.keys()])
+    		#first time - generate names of algorithms considered
+    		if normalized_results is None:
+    			sizes = []
+    			unnormalized_results = dict([(k,[]) for k in new_unnormalized_result.keys()])
+    			normalized_results = dict([(k,[]) for k in new_normalized_result.keys()])
+    			lrs = dict([(k,[]) for k in new_lr.keys()])
+    			lambdas = dict([(k,[]) for k in new_lambda.keys()])
 
-			update_result_dict(unnormalized_results, new_unnormalized_result)
-			update_result_dict(normalized_results, new_normalized_result)
-			update_result_dict(lrs, new_lr)
-			update_result_dict(lambdas, new_lambda)
-			sizes.append(new_size)
+    		update_result_dict(unnormalized_results, new_unnormalized_result)
+    		update_result_dict(normalized_results, new_normalized_result)
+    		update_result_dict(lrs, new_lr)
+    		update_result_dict(lambdas, new_lambda)
+    		sizes.append(new_size)
 
-		print(normalized_results)
+        print(name_problem)
+        print(name_dataset)
+    	print(normalized_results)
 
-		mod.problemdir = mod.fulldir+problem_str(mod.name_problem)+'/'
-		if not os.path.exists(mod.problemdir):
-			os.makedirs(mod.problemdir)
+    	mod.problemdir = mod.fulldir+problem_str(mod.name_problem)+'/'
+    	if not os.path.exists(mod.problemdir):
+    		os.makedirs(mod.problemdir)
 
-		if mod.pair_comp_on is True:
-			plot_all_pair_comp(unnormalized_results, sizes, mod)
-		if mod.cdf_on is True:
-			plot_all_cdfs(normalized_results, mod)
+    	if mod.pair_comp_on is True:
+    		plot_all_pair_comp(unnormalized_results, sizes, mod)
+    	if mod.cdf_on is True:
+    		plot_all_cdfs(normalized_results, mod)
 
-		plot_all_lrs(lrs, mod)
-		plot_all_lambdas(lambdas, mod)
+    	plot_all_lrs(lrs, mod)
+    	plot_all_lambdas(lambdas, mod)
 
 def save_to_hdf(mod):
 	print('saving to hdf..')
@@ -414,6 +418,45 @@ def propag_sup_only(all_results):
 	all_results = all_results[(all_results['epsilon'] != 0.0) | (all_results['algorithm'] != 'Sup-Only')]
 	return all_results
 
+def cartesian(df1, df2):
+	df1['tmp_key'] = 0
+	df2['tmp_key'] = 0
+	prod = df1.merge(df2, how='left', on = 'tmp_key')
+	prod.drop('tmp_key', 1, inplace=True)
+	return prod
+
+def propag_opt_maj_fast(all_results):
+	opt_maj_table = all_results[(all_results['algorithm'] == 'Optimal') | (all_results['algorithm'] == 'Most-Freq')]
+	grouped = all_results.groupby(['dataset'])
+	opt_maj_augmented = []
+	for ds, subtable in grouped:
+		#print(ds)
+		sub_size = subtable.loc[:, 'total_size']
+		#print(sub_size)
+		#print(sub_size.iloc[0])
+		repl_var = ['corrupt_type_warm_start',
+					  'corrupt_prob_warm_start',
+					  'corrupt_type_interaction',
+					  'corrupt_prob_interaction',
+					  'inter_ws_size_ratio',
+					  'epsilon',
+					  'warm_start',
+					  'interaction']
+		subt = subtable[repl_var]
+		uniq_subt = subt.drop_duplicates()
+		opt_maj_ds = opt_maj_table[opt_maj_table['dataset'] == ds]
+		opt_maj_ds.drop(repl_var, axis=1)
+		opt_maj_setting = cartesian(opt_maj_ds, uniq_subt)
+		opt_maj_augmented.append(opt_maj_setting)
+		#print(opt_maj_setting.shape)
+
+	opt_maj_all = pd.concat(opt_maj_augmented)
+	all_results = pd.concat([all_results, opt_maj_all])
+	all_results = all_results[all_results['epsilon'] > 1e-4]
+	all_results = all_results[all_results['inter_ws_size_ratio'] > 1e-4]
+	return all_results
+
+
 def propag_opt_maj(all_results):
 	group_var = ['corrupt_type_warm_start',
 				  'corrupt_prob_warm_start',
@@ -429,6 +472,7 @@ def propag_opt_maj(all_results):
 
 	opt_maj_augmented = []
 	for setting, section in grouped:
+		#print(setting)
 		opt_maj_setting_orig = opt_maj_table[opt_maj_table['dataset'] == setting[8]]
 		opt_maj_setting = opt_maj_setting_orig.copy(deep=True)
 		opt_maj_setting[group_var] = setting
@@ -442,10 +486,13 @@ def propag_opt_maj(all_results):
 
 
 def preprocess(all_results):
+	print('propagating Sup-Only/Optimal/Most-Freq results..')
 	# propagate for Sup-Only
 	all_results = propag_sup_only(all_results)
 	# propagate for Most-Freq and Optimal
-	all_results = propag_opt_maj(all_results)
+	all_results = propag_opt_maj_fast(all_results)
+	#all_results = propag_opt_maj(all_results)
+    print('propagating complete')
 	return all_results
 
 
@@ -488,6 +535,7 @@ if __name__ == '__main__':
 
 	all_results = mod.all_results
 	all_results = preprocess(all_results)
+	all_results = all_results[all_results['corrupt_prob_warm_start'] < 0.6]
 	#ignore the choices_lambda = 4 row
 	#all_results = all_results[(all_results['choices_lambda'] != 4)]
 	#all_results = all_results[(all_results['choices_lambda'] != 8)]

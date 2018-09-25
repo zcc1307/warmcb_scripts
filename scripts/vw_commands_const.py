@@ -20,6 +20,7 @@ RESULT_TMPLT = \
 	('algorithm', 'alg', ''),
 	('adf_on', 'ao', True),
 	('epsilon', 'eps', 0.0),
+	('eps_t', 'epst', 0.0),
 	('loss0', 'l0', 0.0),
 	('loss1', 'l1', 0.0),
 	('cb_type', 'cbt', 'mtr'),
@@ -53,9 +54,6 @@ SUMMARY_TMPLT = \
 	'inter_ws_size_ratio',
 	'adf_on',
 	'algorithm',
-	'lambda_scheme',
-    'choices_lambda',
-	'epsilon',
 	'loss0',
 	'loss1',
 	'learning_rate',
@@ -67,6 +65,9 @@ SUMMARY_TMPLT = \
 	#'choices_lambda',
 	#'validation_method',
 	#'weighting_scheme',
+	#'epsilon',
+	#'lambda_scheme',
+    #'choices_lambda',
 
 VW_OUTFILE_NAME_TMPLT = \
 	['dataset',
@@ -126,10 +127,16 @@ VW_RUN_TMPLT_WARMCB = \
 	 ('validation_method',1),
 	 ('weighting_scheme',1),
 	 ('learning_rate',0.5),
-	 ('epsilon', 0.05),
 	 ('loss0', 0),
 	 ('loss1', 0),
-	 ('progress',2.0)]
+	 ('progress',2.0),
+	 ]
+
+#VW_RUN_TMPLT_WARMCB_EPSILON = \
+#	VW_RUN_TMPLT_WARMCB + [('epsilon', 0.05)]
+
+#VW_RUN_TMPLT_WARMCB_EPS_T = \
+#	VW_RUN_TMPLT_WARMCB + [('eps_t', 1.0)]
 
 #VW_PROGRESS_PATTERN = \
 # '\d+\s\d+\.\d+\n' +
