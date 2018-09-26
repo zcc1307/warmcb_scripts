@@ -107,8 +107,8 @@ def get_all_params(mod):
     								   d['corrupt_prob_interaction'])
     				 )
     print('The total number of VW commands to run is: ', len(prm_all))
-    for row in prm_all:
-    	print(row)
+    #for row in prm_all:
+    #	print(row)
     return prm_all
 
 def get_filters(mod):
