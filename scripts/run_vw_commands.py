@@ -245,6 +245,9 @@ def run_single_expt(mod):
         result_formatted = format_setting(mod.sum_tmplt, result_combined)
         write_result(mod, result_formatted)
 
+    if mod.remove_vw_out:
+        os.remove(mod.vw_output_filename)
+
 # The following function is a "template filling" function
 # Given a template, we use the setting dict to fill it as much as possible
 def format_setting(template, setting):
@@ -358,6 +361,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_learning_rates', type=int, default=1)
     parser.add_argument('--num_datasets', type=int, default=-1)
     parser.add_argument('--num_folds', type=int, default=1)
+    parser.add_argument('--remove_vw_out', type=bool, default=False)
 
     args = parser.parse_args()
     flag_dir = args.results_dir + 'flag/'
@@ -368,6 +372,7 @@ if __name__ == '__main__':
     mod.vw_path = '../../vowpal_wabbit/vowpalwabbit/vw'
     mod.ds_path = args.ds_dir
     mod.results_path = args.results_dir
+    mod.remove_vw_out = args.remove_vw_out
     print('reading dataset files..')
     #TODO: this line specifically for multiple folds
     #Need a systematic way to detect subfolder names
