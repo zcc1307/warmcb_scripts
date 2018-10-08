@@ -20,7 +20,7 @@ class model:
 
         self.algs_on = True
         self.optimal_on = True
-        self.majority_on = True
+        self.majority_on = False
 
         self.ws_gt_on = False
         self.inter_gt_on = True
@@ -36,10 +36,10 @@ class model:
         #mod.choices_choices_lambda = [2,4,8]
         self.choices_choices_lambda = [2,8]
 
-        self.choices_cor_type_ws = [1,2,3]
-        self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
-        #self.choices_cor_type_ws = [1]
-        #self.choices_cor_prob_ws = [0.0]
+        #self.choices_cor_type_ws = [1,2,3]
+        #self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
+        self.choices_cor_type_ws = [1]
+        self.choices_cor_prob_ws = [0.0]
 
         self.choices_cor_type_inter = [1]
         self.choices_cor_prob_inter = [0.0]
@@ -50,12 +50,13 @@ class model:
         #self.choices_cor_prob_inter = [0.0,0.5]
 
         #self.choices_epsilon = [0.05]
-        self.choices_epsilon = []
-        self.choices_eps_t = [0.1]
+        self.choices_epsilon = [0.05]
+        self.choices_eps_t = [0.1, 1.0]
         #self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
         #self.epsilon_on = True
         #self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
         self.choices_adf = [True]
+        self.choices_cs = [True]
         #self.critical_size_ratios = [368 * pow(2, -i) for i in range(8) ]
         self.critical_size_ratios = [184 * pow(2, -i) for i in range(7) ]
 
@@ -132,8 +133,14 @@ def gen_vw_options(mod):
         # Fully supervised on full dataset
         mod.vw_template = OrderedDict(VW_RUN_TMPLT_OPT)
         mod.param['passes'] = 5
-        mod.param['oaa'] = mod.param['num_classes']
         mod.param['cache_file'] = mod.param['data'] + '.cache'
+        #if mod.param['cs_on'] is True:
+        mod.param['csoaa'] = mod.param['num_classes']
+        mod.vw_template['csoaa'] = mod.param['num_classes']
+        #else:
+        #    mod.param['oaa'] = mod.param['num_classes']
+        #    mod.vw_template['oaa'] = mod.param['num_classes']
+
     elif mod.param['algorithm'] == 'Most-Freq':
         # Compute majority error; basically we would like to skip vw running as fast as possible
         mod.vw_template = OrderedDict(VW_RUN_TMPLT_MAJ)
@@ -146,7 +153,7 @@ def gen_vw_options(mod):
         mod.param['warm_start'] = mod.param['warm_start_multiplier'] * mod.param['progress']
         mod.param['interaction'] = mod.param['total_size'] - mod.param['warm_start']
         mod.param['warm_cb'] = mod.param['num_classes']
-        mod.param['overwrite_label'] = mod.param['majority_class']
+        #mod.param['overwrite_label'] = mod.param['majority_class']
 
         if mod.param['adf_on'] is True:
             mod.param['cb_explore_adf'] = ' '
@@ -159,6 +166,10 @@ def gen_vw_options(mod):
             mod.vw_template['eps_t'] = 1.0
         else:
             mod.vw_template['epsilon'] = 0.0
+
+        if mod.param['cs_on'] is True:
+            mod.param['warm_cb_cs'] = ' '
+            mod.vw_template['warm_cb_cs'] = ' '
 
 
 def execute_vw(mod):
@@ -221,7 +232,7 @@ def run_single_expt(mod):
     mod.param['data'] = mod.ds_path + str(mod.param['fold']) + '/' + mod.param['dataset']
     mod.param['total_size'] = get_num_lines(mod.param['data'])
     mod.param['num_classes'] = get_num_classes(mod.param['data'])
-    mod.param['majority_size'], mod.param['majority_class'] = get_majority_class(mod.param['data'])
+    #mod.param['majority_size'], mod.param['majority_class'] = get_majority_class(mod.param['data'])
     mod.param['progress'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
     mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
     mod.vw_output_filename = mod.vw_output_dir + get_vw_out_filename(mod) + '.txt'
@@ -277,9 +288,8 @@ def get_num_lines(dataset_name):
 
 def get_num_classes(ds):
     # could be a bug for including the prefix..
-    did, n_actions = os.path.basename(ds).split('.')[0].split('_')[1:]
-    did, n_actions = int(did), int(n_actions)
-    return n_actions
+    metadata_list = os.path.basename(ds).split('.')[0].split('_')[1:]
+    return int(metadata_list[-1])
 
 def get_majority_class(dataset_name):
     maj_class_str = subprocess.check_output(('zcat '+ dataset_name +' | cut -d \' \' -f 1 | sort | uniq -c | sort -r -n | head -1 | xargs '), shell=True)

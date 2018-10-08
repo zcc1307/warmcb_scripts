@@ -104,7 +104,7 @@ VW_RUN_TMPLT_OPT = \
  	[('data',''),
 	 ('progress',2.0),
 	 ('passes',0),
-	 ('oaa',0),
+	 #('oaa',0),
 	 ('cache_file','')]
 
 VW_RUN_TMPLT_MAJ = \

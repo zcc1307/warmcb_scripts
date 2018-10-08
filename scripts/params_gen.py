@@ -52,6 +52,7 @@ def get_all_params(mod):
     prm_choices_lbd = dictify('choices_lambda', mod.choices_choices_lambda)
     prm_choices_eps = dictify('epsilon', mod.choices_epsilon) + dictify('eps_t', mod.choices_eps_t)
     prm_adf_on = dictify('adf_on', mod.choices_adf)
+    prm_cs_on = dictify('cs_on', mod.choices_cs)
     prm_loss_enc = dictify(('loss0', 'loss1'), mod.choices_loss_enc)
 
     # Common parameters
@@ -72,6 +73,7 @@ def get_all_params(mod):
      prm_cb_type,
      prm_fold,
      prm_adf_on,
+     prm_cs_on,
      prm_loss_enc])
 
     prm_com = param_cartesian(prm_com_noeps, prm_choices_eps)
@@ -166,7 +168,7 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 					 'weighting_scheme': 1,
                      'validation_method': 1,
  					 # for time-varying epsilon
-					 'eps_t':0.1,
+					 #'eps_t':0.1,
 					 'lambda_scheme': 2,
 					 # for fixed epsilon
 					 #'epsilon': 0.05,
@@ -271,7 +273,6 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 		[
 			[
 				{'weighting_scheme':1,
-				 'adf_on':True,
 				 'choices_lambda':1}
 			]
 		]

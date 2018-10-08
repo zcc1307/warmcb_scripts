@@ -17,7 +17,8 @@ import random
 import math
 from alg_const import noise_type_str, alg_str, alg_str_compatible, alg_color_style, alg_index
 
-pd.set_option('display.max_columns', 500)
+pd.set_option('display.max_columns', 200)
+pd.set_option('display.max_rows', 200)
 
 class model:
     def __init__(self):
@@ -252,8 +253,7 @@ def plot_all(mod, all_results):
         sizes = None
         mod.name_problem = name_problem
 
-        #print 'in group_problem:'
-        #print name_problem
+        print('in group_problem:', name_problem)
         #print group_problem[(group_problem['warm_start_update'] == True) & (group_problem['interaction_update'] == False) ].shape
         #raw_input('...')
 
@@ -273,6 +273,7 @@ def plot_all(mod, all_results):
             #Record the error rates of all algorithms
             #Group level 3: algorithms
             new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
+            #print(len(new_unnormalized_result))
             if len(new_unnormalized_result) != 7:
                 continue
             new_normalized_result = normalize_score(new_unnormalized_result, mod)
@@ -359,6 +360,8 @@ def filter_results(mod, all_results):
     elif mod.filter == '7':
         all_results = all_results[all_results['warm_start'] >= 100]
         all_results = all_results[all_results['num_classes'] >= 3]
+    elif mod.filter == '8':
+        all_results = all_results[all_results['warm_start'] >= 100]
 
     return all_results
 
@@ -424,12 +427,14 @@ def propagate(all_res):
     return prop_res
 
 def avg_folds(all_res):
-    excl = list(filter(lambda item: item != 'fold' and item != 'avg_error', list(all_res)))
+    #excl = list(filter(lambda item: item != 'fold' and item != 'avg_error', list(all_res)))
+    excl = ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm', 'learning_rate']
     return all_res.groupby(excl).mean().reset_index()
 
 def tune_lr(all_res):
-    excl = list(filter(lambda item: item != 'learning_rate' and item != 'avg_error', list(all_res)))
-    return all_res[ all_res.groupby(excl)['avg_error'].rank(method='average') == 1 ]
+    #excl = list(filter(lambda item: item != 'learning_rate' and item != 'avg_error', list(all_res)))
+    excl = ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm']
+    return all_res.iloc[ all_res.groupby(excl)['avg_error'].idxmin(), : ]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='result summary')
@@ -470,9 +475,11 @@ if __name__ == '__main__':
         load_from_sum(mod)
 
     all_results = mod.all_results
-    all_results = propagate(all_results)
     all_results = avg_folds(all_results)
     all_results = tune_lr(all_results)
+    all_results = propagate(all_results)
+
+    #all_results = all_results.loc[:, ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm', 'learning_rate', 'avg_error']]
     #all_results = all_results[all_results['corrupt_prob_warm_start'] < 0.6]
     #ignore the choices_lambda = 4 row
     #all_results = all_results[(all_results['choices_lambda'] != 4)]
