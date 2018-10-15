@@ -9,6 +9,7 @@ import re
 from collections import OrderedDict
 from params_gen import get_all_params, merge_two_dicts
 from vw_commands_const import VW_RUN_TMPLT_OPT, VW_RUN_TMPLT_MAJ, VW_RUN_TMPLT_WARMCB, VW_PROGRESS_PATTERN, VW_RESULT_TMPLT, FULL_TMPLT, SIMP_MAP, SUM_TMPLT, VW_OUT_TMPLT
+import gzip
 
 class model:
     def __init__(self):
@@ -20,7 +21,7 @@ class model:
 
         self.algs_on = True
         self.optimal_on = True
-        self.majority_on = False
+        self.majority_on = True
 
         self.ws_gt_on = False
         self.inter_gt_on = True
@@ -30,7 +31,7 @@ class model:
 
         # use fractions instead of absolute numbers
         #self.ws_multipliers = [pow(2,i) for i in range(4)]
-        self.ws_multipliers = [pow(2,i) for i in range(4)]
+        self.ws_multipliers = [pow(2,i) for i in range(2)]
 
         self.choices_cb_type = ['mtr']
         #mod.choices_choices_lambda = [2,4,8]
@@ -51,7 +52,8 @@ class model:
 
         #self.choices_epsilon = [0.05]
         self.choices_epsilon = [0.05]
-        self.choices_eps_t = [0.1, 1.0]
+        self.choices_eps_t = [0.1]
+        #, 1.0
         #self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
         #self.epsilon_on = True
         #self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
@@ -78,7 +80,11 @@ def analyze_vw_out_maj_opt(mod):
         vw_result['avg_error'] = avg_error(mod)
     else:
         # this condition is for computing the majority error
-        err =  1 - float(mod.param['majority_size']) / mod.param['total_size']
+        #err =  1 - float(mod.param['majority_size']) / mod.param['total_size']
+        if mod.param['cs_on'] is True:
+            err = get_maj_error_cs(mod.param['data'])
+        else:
+            err = get_maj_error_mc(mod.param['data'])
         vw_result['avg_error'] = float('%0.5f' % err)
     return vw_result
 
@@ -110,6 +116,7 @@ def analyze_vw_out(mod):
                 vw_result = VW_RESULT_TMPLT.copy()
                 vw_result['interaction'] = inter_effective
                 vw_result['inter_ws_size_ratio'] = ratio
+                vw_result['interaction_multiplier'] = mod.param['warm_start_multiplier'] * ratio
                 vw_result['avg_error'] = float(avg_loss)
                 vw_result['actual_variance'] = float(actual_var)
                 vw_result['ideal_variance'] = float(ideal_var)
@@ -134,12 +141,12 @@ def gen_vw_options(mod):
         mod.vw_template = OrderedDict(VW_RUN_TMPLT_OPT)
         mod.param['passes'] = 5
         mod.param['cache_file'] = mod.param['data'] + '.cache'
-        #if mod.param['cs_on'] is True:
-        mod.param['csoaa'] = mod.param['num_classes']
-        mod.vw_template['csoaa'] = mod.param['num_classes']
-        #else:
-        #    mod.param['oaa'] = mod.param['num_classes']
-        #    mod.vw_template['oaa'] = mod.param['num_classes']
+        if mod.param['cs_on'] is True:
+            mod.param['csoaa'] = mod.param['num_classes']
+            mod.vw_template['csoaa'] = mod.param['num_classes']
+        else:
+            mod.param['oaa'] = mod.param['num_classes']
+            mod.vw_template['oaa'] = mod.param['num_classes']
 
     elif mod.param['algorithm'] == 'Most-Freq':
         # Compute majority error; basically we would like to skip vw running as fast as possible
@@ -192,7 +199,7 @@ def intersperse(l, ch):
     return s
 
 def param_to_str(param):
-    param_list = [ str(k)+'='+str(v) for k,v in param.items() ]
+    param_list = [ str(k)+'={'+str(v) +'}' for k,v in param.items() ]
     return intersperse(param_list, ',')
 
 def replace_keys(dic, simplified_keymap):
@@ -208,26 +215,6 @@ def get_vw_out_filename(mod):
     param_simplified = replace_keys(param_formatted, mod.simp_map)
     return param_to_str(param_simplified)
 
-def extend_item(prm, items, item_str):
-    for item in items:
-        if item in prm:
-            prm[item_str] += (',' + SIMP_MAP[item] + '=' + str(prm[item]))
-
-def extend_prm(prm):
-    asb_items = ['validation_method', 'weighting_scheme', 'choices_lambda']
-    expl_items = ['epsilon', 'eps_t']
-    prblm_items = ['corrupt_type_warm_start', 'corrupt_prob_warm_start', 'corrupt_type_interaction', 'corrupt_prob_interaction', 'inter_ws_size_ratio']
-    if prm['algorithm'] == 'AwesomeBandits':
-        extend_item(prm, asb_items, 'algorithm')
-
-    prm['explore_method'] = 'expl'
-    extend_item(prm, expl_items, 'explore_method')
-
-    prm['problem_setting'] = 'st'
-    extend_item(prm, prblm_items, 'problem_setting')
-
-    return prm
-
 def run_single_expt(mod):
     mod.param['data'] = mod.ds_path + str(mod.param['fold']) + '/' + mod.param['dataset']
     mod.param['total_size'] = get_num_lines(mod.param['data'])
@@ -236,12 +223,13 @@ def run_single_expt(mod):
     mod.param['progress'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
     mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
     mod.vw_output_filename = mod.vw_output_dir + get_vw_out_filename(mod) + '.txt'
+    #mod.param['dataset'] = remove_suffix(mod.param['data'])
+    mod.param['vw_output_name'] = mod.vw_output_filename
 
     execute_vw(mod)
     vw_run_results = analyze_vw_out(mod)
     for vw_result in vw_run_results:
         result_combined = merge_two_dicts(mod.param, vw_result)
-        result_combined = extend_prm(result_combined)
         result_formatted = format_setting(mod.sum_tmplt, result_combined)
         write_result(mod, result_formatted)
 
@@ -298,6 +286,36 @@ def get_majority_class(dataset_name):
     maj_class_str = subprocess.check_output(('zcat '+ dataset_name +' | cut -d \' \' -f 1 | sort | uniq -c | sort -r -n | head -1 | xargs '), shell=True)
     maj_size, maj_class = maj_class_str.split()
     return int(maj_size), int(maj_class)
+
+def get_maj_error_mc(dataset_name):
+    count_label = {}
+    size = 0
+    f = gzip.open(dataset_name, 'r')
+    for line in f:
+        size += 1
+        line_label = line.decode("utf-8").split('|')
+        label = line_label[0].split()[0]
+        if label not in count_label:
+            count_label[label] = 0
+        count_label[label] += 1
+    print (float(max(count_label.values())) / size)
+    return 1 - (float(max(count_label.values())) / size)
+
+
+def get_maj_error_cs(dataset_name):
+    err_label = {}
+    size = 0
+    f = gzip.open(dataset_name, 'r')
+    for line in f:
+        size += 1
+        line_label = line.decode("utf-8").split('|')
+        for lc_pair in line_label[0].split():
+            label, cost = lc_pair.split(':')
+            if label not in err_label:
+                err_label[label] = 0
+            err_label[label] += float(cost)
+
+    return min(err_label.values()) / size
 
 def avg_error(mod):
     return vw_output_extract(mod, 'average loss')

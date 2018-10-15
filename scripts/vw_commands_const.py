@@ -16,6 +16,7 @@ RESULT_TMPLT = \
 	('warm_start', 'ws', 0),
 	('warm_start_type', 'wst', 0),
 	('interaction', 'bs', 0),
+    ('interaction_multiplier', 'im', 0),
 	('inter_ws_size_ratio', 'iwsr', 0),
 	('algorithm', 'alg', ''),
 	('adf_on', 'ao', True),
@@ -36,7 +37,8 @@ RESULT_TMPLT = \
 	('actual_variance', 'av', 0.0),
 	('ideal_variance', 'iv', 0.0),
 	('last_lambda', 'll', 0.0),
-    ('problem_setting', 'ps', '')
+    ('corruption', 'co', ''),
+    ('vw_output_name', 'von', '')
 	]
 	#('optimal_approx', 'oa', False),
 	#('majority_approx', 'ma', False),
@@ -44,24 +46,26 @@ SUMMARY_TMPLT = \
 	[
 	'fold',
 	'dataset',
-	'num_classes',
-	'total_size',
-	'majority_size',
-	'warm_start',
-	'interaction',
-    'problem_setting',
-	'adf_on',
+	'warm_start_multiplier',
+	'interaction_multiplier',
+    'inter_ws_size_ratio',
+    'corruption',
 	'algorithm',
-    'lambda_scheme',
     'explore_method',
-	'loss0',
-	'loss1',
 	'learning_rate',
 	'avg_error',
 	'actual_variance',
 	'ideal_variance',
-	'last_lambda'
+	'last_lambda',
+    'vw_output_name'
 	]
+    #'lambda_scheme',
+	#'loss0',
+	#'loss1',
+    #'adf_on',
+	#'num_classes',
+	#'total_size',
+	#'majority_size',
 	#'corrupt_type_warm_start',
 	#'corrupt_prob_warm_start',
 	#'corrupt_type_interaction',
@@ -75,28 +79,30 @@ SUMMARY_TMPLT = \
     #'choices_lambda',
 
 VW_OUTFILE_NAME_TMPLT = \
-	['dataset',
-	 'fold',
-	 'lambda_scheme',
-	 'validation_method',
+	['fold',
 	 'warm_start_multiplier',
-	 'corrupt_prob_interaction',
-	 'corrupt_prob_warm_start',
-	 'corrupt_type_interaction',
-	 'corrupt_type_warm_start',
- 	 'warm_start_update',
- 	 'interaction_update',
-	 'warm_start_type',
-	 'choices_lambda',
-	 'weighting_scheme',
-	 'cb_type',
-	 'learning_rate',
-	 'adf_on',
-	 'epsilon',
-     'eps_t',
-	 'loss0',
-	 'loss1',
-	 'algorithm']
+     'corruption',
+     'explore_method',
+	 'algorithm',
+     'learning_rate']
+ 	 #'corrupt_prob_interaction',
+ 	 #'corrupt_prob_warm_start',
+ 	 #'corrupt_type_interaction',
+ 	 #'corrupt_type_warm_start',
+ 	 #'lambda_scheme',
+ 	 #'validation_method',
+     #'warm_start_update',
+ 	 #'interaction_update',
+	 #'warm_start_type',
+	 #'choices_lambda',
+	 #'weighting_scheme',
+     #'cb_type',
+     #'adf_on',
+ 	 #'epsilon',
+     #'eps_t',
+ 	 #'loss0',
+ 	 #'loss1',
+     #'dataset'
  	 #'optimal_approx',
  	 #'majority_approx',
 
@@ -149,7 +155,7 @@ VW_RUN_TMPLT_WARMCB = \
 # '\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+.*'
 #float_pat = '\d+\.\d+'
 #int_pat = '\d+'
-foi_pat = '\d+(\.\d+)?'
+foi_pat = '\d+(?:\.\d+)?'
 label_pat = '[a-zA-Z0-9]+'
 gen_pat = '[a-zA-Z0-9\.]+'
 VW_PROGRESS_PATTERN = '('+foi_pat+'\s+'+foi_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\n'+ \

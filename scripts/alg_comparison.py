@@ -342,6 +342,13 @@ def load_from_sum(mod):
     #print(all_results)
     mod.all_results = all_results
 
+def load_cached(mod):
+    if os.path.exists(mod.results_dir+'cache.h5'):
+        load_from_hdf(mod)
+    else:
+        load_from_sum(mod)
+        save_to_hdf(mod)
+
 def filter_results(mod, all_results):
     if mod.filter == '1':
         pass
@@ -427,6 +434,7 @@ def propagate(all_res):
     return prop_res
 
 def avg_folds(all_res):
+    #potential problem: last lambda, after averaging, might not make sense
     #excl = list(filter(lambda item: item != 'fold' and item != 'avg_error', list(all_res)))
     excl = ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm', 'learning_rate']
     return all_res.groupby(excl).mean().reset_index()
@@ -466,11 +474,7 @@ if __name__ == '__main__':
         os.makedirs(mod.fulldir)
 
     if args.cached is True:
-        if os.path.exists(mod.results_dir+'cache.h5'):
-            load_from_hdf(mod)
-        else:
-            load_from_sum(mod)
-            save_to_hdf(mod)
+        load_cached(mod)
     else:
         load_from_sum(mod)
 

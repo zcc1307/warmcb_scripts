@@ -108,6 +108,10 @@ def get_all_params(mod):
     								   d['corrupt_type_interaction'],
     								   d['corrupt_prob_interaction'])
     				 )
+
+    for prm in prm_all:
+        prm = extend_prm(prm)
+
     print('The total number of VW commands to run is: ', len(prm_all))
     #for row in prm_all:
     #	print(row)
@@ -197,7 +201,9 @@ def get_params_opt(mod):
 			 'corrupt_type_warm_start':1,
 			 'corrupt_prob_warm_start':0.0,
 			 'corrupt_type_interaction':1,
-			 'corrupt_prob_interaction':0.0}
+			 'corrupt_prob_interaction':0.0,
+             'cs_on': True
+             }
 	    ]
 	else:
 		prm_optimal = []
@@ -212,7 +218,9 @@ def get_params_maj(mod):
 			 'corrupt_type_warm_start':1,
 			 'corrupt_prob_warm_start':0.0,
 			 'corrupt_type_interaction':1,
-			 'corrupt_prob_interaction':0.0}
+			 'corrupt_prob_interaction':0.0,
+             'cs_on': True
+             }
 		]
 	else:
 		prm_majority = []
@@ -283,3 +291,24 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
 		prm_baseline = []
 
 	return prm_baseline
+
+
+def extend_item(prm, items, item_str):
+    for item in items:
+        if item in prm:
+            prm[item_str] += (',' + SIMP_MAP[item] + '=' + str(prm[item]))
+
+def extend_prm(prm):
+    asb_items = ['validation_method', 'weighting_scheme', 'choices_lambda']
+    expl_items = ['epsilon', 'eps_t']
+    prblm_items = ['corrupt_type_warm_start', 'corrupt_prob_warm_start', 'corrupt_type_interaction', 'corrupt_prob_interaction']
+    if prm['algorithm'] == 'AwesomeBandits':
+        extend_item(prm, asb_items, 'algorithm')
+
+    prm['explore_method'] = 'expl'
+    extend_item(prm, expl_items, 'explore_method')
+
+    prm['corruption'] = 'st'
+    extend_item(prm, prblm_items, 'corruption')
+
+    return prm
