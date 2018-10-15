@@ -328,11 +328,6 @@ def vw_output_extract(mod, pattern):
     vw_output.close()
     return avge
 
-#def complete_header(simp_header):
-#    simplified_keymap = OrderedDict([ (item[1], item[0]) for item in RESULT_TMPLT ])
-#    return simplified_keymap[simp_header]
-
-
 def main_loop(mod):
     mod.summary_file_name = mod.results_path+str(mod.task_id)+'of'+str(mod.num_tasks)+'.sum'
     mod.full_tmplt = FULL_TMPLT
@@ -361,7 +356,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_learning_rates', type=int, default=1)
     parser.add_argument('--num_datasets', type=int, default=-1)
     parser.add_argument('--num_folds', type=int, default=1)
-    parser.add_argument('--remove_vw_out', type=bool, default=False)
+    parser.add_argument('--remove_vw_out', type=int, default=0)
 
     args = parser.parse_args()
     flag_dir = args.results_dir + 'flag/'
@@ -372,7 +367,8 @@ if __name__ == '__main__':
     mod.vw_path = '../../vowpal_wabbit/vowpalwabbit/vw'
     mod.ds_path = args.ds_dir
     mod.results_path = args.results_dir
-    mod.remove_vw_out = args.remove_vw_out
+    mod.remove_vw_out = (args.remove_vw_out != 0)
+
     print('reading dataset files..')
     #TODO: this line specifically for multiple folds
     #Need a systematic way to detect subfolder names

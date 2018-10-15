@@ -152,7 +152,7 @@ VW_RUN_TMPLT_WARMCB = \
 foi_pat = '\d+(\.\d+)?'
 label_pat = '[a-zA-Z0-9]+'
 gen_pat = '[a-zA-Z0-9\.]+'
-VW_PROGRESS_PATTERN = '('+gen_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\n'+ \
+VW_PROGRESS_PATTERN = '('+foi_pat+'\s+'+foi_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\n'+ \
 			'\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+\n)'
 
 #VW_PROGRESS_PATTERN = '(\n'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\n'+ \
@@ -170,5 +170,6 @@ VW_RESULT_TMPLT = \
 
 FULL_TMPLT = OrderedDict([ (item[0], item[2]) for item in RESULT_TMPLT ])
 SIMP_MAP = OrderedDict([ (item[0], item[1]) for item in RESULT_TMPLT ])
+COMP_MAP = OrderedDict([ (item[1], item[0]) for item in RESULT_TMPLT ])
 SUM_TMPLT = OrderedDict([ (item, FULL_TMPLT[item]) for item in SUMMARY_TMPLT ])
 VW_OUT_TMPLT = OrderedDict([ (item, FULL_TMPLT[item]) for item in VW_OUTFILE_NAME_TMPLT ])

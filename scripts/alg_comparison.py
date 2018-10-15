@@ -475,6 +475,8 @@ if __name__ == '__main__':
         load_from_sum(mod)
 
     all_results = mod.all_results
+    #all_results = all_results[all_results['dataset'] == 'ds_vehicle_cs_randcost_54_4.vw.gz']
+    #all_results = all_results[all_results['learning_rate'] < 0.004]
     all_results = avg_folds(all_results)
     all_results = tune_lr(all_results)
     all_results = propagate(all_results)
