@@ -47,6 +47,7 @@ SUMMARY_TMPLT = \
 	'fold',
 	'dataset',
 	'warm_start_multiplier',
+    'warm_start',
 	'interaction_multiplier',
     'inter_ws_size_ratio',
     'corruption',

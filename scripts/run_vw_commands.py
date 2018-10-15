@@ -88,14 +88,10 @@ def analyze_vw_out_maj_opt(mod):
         vw_result['avg_error'] = float('%0.5f' % err)
     return vw_result
 
-def analyze_vw_out(mod):
-    vw_run_results = []
+def extract_vw_output(vw_filename):
+    results = []
 
-    if mod.param['algorithm'] == 'Most-Freq' or mod.param['algorithm'] == 'Optimal':
-        vw_run_results.append(analyze_vw_out_maj_opt(mod))
-        return vw_run_results
-
-    f = open(mod.vw_output_filename, 'r')
+    f = open(vw_filename, 'r')
     vw_output_text = f.read()
     rgx = re.compile(VW_PROGRESS_PATTERN, flags=re.M)
     matched = rgx.findall(vw_output_text)
@@ -104,8 +100,22 @@ def analyze_vw_out(mod):
         line = mat
         s = line.split()
         if len(s) >= 12:
+            print('warning: parsing vw file has some problem. The line is: ', line)
             s = s[:11]
+        results.append(s)
+    f.close()
+    return results
 
+def analyze_vw_out(mod):
+    vw_run_results = []
+
+    if mod.param['algorithm'] == 'Most-Freq' or mod.param['algorithm'] == 'Optimal':
+        vw_run_results.append(analyze_vw_out_maj_opt(mod))
+        return vw_run_results
+
+    vw_results = extract_vw_output(mod.vw_output_filename)
+
+    for s in vw_results:
         counter_new, last_lambda, actual_var, ideal_var, \
         avg_loss, last_loss, counter, weight, curr_label, curr_pred, curr_feat = s
         inter_effective = int(float(weight))
@@ -122,7 +132,6 @@ def analyze_vw_out(mod):
                 vw_result['ideal_variance'] = float(ideal_var)
                 vw_result['last_lambda'] = float(last_lambda)
                 vw_run_results.append(vw_result)
-    f.close()
     return vw_run_results
 
 

@@ -317,6 +317,7 @@ def plot_all(mod, all_results):
 
 def save_to_hdf(mod):
     print('saving to hdf..')
+    print(mod.all_results)
     store = pd.HDFStore(mod.results_dir+'cache.h5')
     store['result_table'] = mod.all_results
     store.close()
@@ -394,10 +395,11 @@ def cartesian(df1, df2):
 def propag_opt_maj(opt_maj, other):
     grouped = other.groupby(['dataset'])
     opt_maj_propag = []
-    repl_var = [  'problem_setting',
-                  'explore_method',
-                  'warm_start',
-                  'interaction']
+    repl_var = [  'corruption',
+                  'warm_start_multiplier',
+                  'interaction_multiplier',
+                  'explore_method'
+               ]
     for ds, subtable in grouped:
         #print(ds)
         subt = subtable[repl_var]
@@ -436,12 +438,12 @@ def propagate(all_res):
 def avg_folds(all_res):
     #potential problem: last lambda, after averaging, might not make sense
     #excl = list(filter(lambda item: item != 'fold' and item != 'avg_error', list(all_res)))
-    excl = ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm', 'learning_rate']
+    excl = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm', 'learning_rate']
     return all_res.groupby(excl).mean().reset_index()
 
 def tune_lr(all_res):
     #excl = list(filter(lambda item: item != 'learning_rate' and item != 'avg_error', list(all_res)))
-    excl = ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm']
+    excl = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm']
     return all_res.iloc[ all_res.groupby(excl)['avg_error'].idxmin(), : ]
 
 if __name__ == '__main__':
