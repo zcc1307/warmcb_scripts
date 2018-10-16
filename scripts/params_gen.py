@@ -52,7 +52,7 @@ def get_all_params(mod):
     prm_choices_lbd = dictify('choices_lambda', mod.choices_choices_lambda)
     prm_choices_eps = dictify('epsilon', mod.choices_epsilon) + dictify('eps_t', mod.choices_eps_t)
     prm_adf_on = dictify('adf_on', mod.choices_adf)
-    prm_cs_on = dictify('cs_on', mod.choices_cs)
+    prm_cs_on = dictify('cs_on', [mod.cs_on])
     prm_loss_enc = dictify(('loss0', 'loss1'), mod.choices_loss_enc)
 
     # Common parameters
@@ -202,7 +202,7 @@ def get_params_opt(mod):
 			 'corrupt_prob_warm_start':0.0,
 			 'corrupt_type_interaction':1,
 			 'corrupt_prob_interaction':0.0,
-             'cs_on': True
+             'cs_on': mod.cs_on
              }
 	    ]
 	else:
@@ -219,7 +219,7 @@ def get_params_maj(mod):
 			 'corrupt_prob_warm_start':0.0,
 			 'corrupt_type_interaction':1,
 			 'corrupt_prob_interaction':0.0,
-             'cs_on': True
+             'cs_on': mod.cs_on
              }
 		]
 	else:

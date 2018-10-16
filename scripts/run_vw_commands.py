@@ -31,7 +31,7 @@ class model:
 
         # use fractions instead of absolute numbers
         #self.ws_multipliers = [pow(2,i) for i in range(4)]
-        self.ws_multipliers = [pow(2,i) for i in range(2)]
+        self.ws_multipliers = [pow(2,i) for i in range(4)]
 
         self.choices_cb_type = ['mtr']
         #mod.choices_choices_lambda = [2,4,8]
@@ -39,8 +39,8 @@ class model:
 
         #self.choices_cor_type_ws = [1,2,3]
         #self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
-        self.choices_cor_type_ws = [1]
-        self.choices_cor_prob_ws = [0.0]
+        self.choices_cor_type_ws = [3]
+        self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
 
         self.choices_cor_type_inter = [1]
         self.choices_cor_prob_inter = [0.0]
@@ -51,14 +51,14 @@ class model:
         #self.choices_cor_prob_inter = [0.0,0.5]
 
         #self.choices_epsilon = [0.05]
-        self.choices_epsilon = [0.05]
+        self.choices_epsilon = []
         self.choices_eps_t = [0.1]
         #, 1.0
         #self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
         #self.epsilon_on = True
         #self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
         self.choices_adf = [True]
-        self.choices_cs = [True]
+        self.cs_on = False
         #self.critical_size_ratios = [368 * pow(2, -i) for i in range(8) ]
         self.critical_size_ratios = [184 * pow(2, -i) for i in range(7) ]
 
@@ -191,7 +191,7 @@ def gen_vw_options(mod):
 def execute_vw(mod):
     gen_vw_options(mod)
     cmd = gen_vw_command(mod)
-    print(cmd)
+    print(cmd, '\n')
     f = open(mod.vw_output_filename, 'w')
     f.write(cmd+'\n')
     f.close()
@@ -307,7 +307,7 @@ def get_maj_error_mc(dataset_name):
         if label not in count_label:
             count_label[label] = 0
         count_label[label] += 1
-    print (float(max(count_label.values())) / size)
+
     return 1 - (float(max(count_label.values())) / size)
 
 

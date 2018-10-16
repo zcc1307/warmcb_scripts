@@ -16,6 +16,7 @@ from collections import Counter
 import random
 import math
 from alg_const import noise_type_str, alg_str, alg_str_compatible, alg_color_style, alg_index
+from run_vw_commands import param_to_str
 
 pd.set_option('display.max_columns', 200)
 pd.set_option('display.max_rows', 200)
@@ -100,8 +101,8 @@ def save_legend(mod, indices):
     figlegend.savefig(mod.problemdir+'legend.pdf')
     plt.close()
 
-def problem_str(name_problem):
-    return name_problem[0] + '_' + name_problem[1]
+#def problem_str(name_problem):
+#    return name_problem[0] + '_' + name_problem[1]
 
 def plot_cdf(alg_name, errs):
     col, sty = alg_color_style(alg_name)
@@ -221,17 +222,17 @@ def get_unnormalized_results(result_table):
     new_lambda = {}
     new_size = 0
 
-    i = 0
+    #i = 0
     for idx, row in result_table.iterrows():
-        if i == 0:
-            new_size = row['interaction']
+        #if i == 0:
+        #    new_size = row['interaction_multiplier']
 
-        if row['interaction'] == new_size:
-            alg_name = row['algorithm']
-            new_unnormalized_results[alg_name] = row['avg_error']
-            new_lr[alg_name] = row['learning_rate']
-            new_lambda[alg_name] = row['last_lambda']
-        i += 1
+        #if row['interaction'] == new_size:
+        alg_name = row['algorithm']
+        new_unnormalized_results[alg_name] = row['avg_error']
+        new_lr[alg_name] = row['learning_rate']
+        new_lambda[alg_name] = row['last_lambda']
+        #i += 1
 
     return new_size, new_unnormalized_results, new_lr, new_lambda
 
@@ -244,8 +245,8 @@ def update_result_dict(results_dict, new_result):
 
 def plot_all(mod, all_results):
     #Group level 1: corruption mode, corruption prob, warm start - bandit ratio (each group corresponds to one cdf plot)
-    grouped_by_problem = all_results.groupby(['problem_setting',
-                                              'explore_method'])
+    problem_title = ['corruption','inter_ws_size_ratio','explore_method']
+    grouped_by_problem = all_results.groupby(problem_title)
 
     for name_problem, group_problem in grouped_by_problem:
         normalized_results = None
@@ -253,23 +254,21 @@ def plot_all(mod, all_results):
         sizes = None
         mod.name_problem = name_problem
 
-        print('in group_problem:', name_problem)
-        #print group_problem[(group_problem['warm_start_update'] == True) & (group_problem['interaction_update'] == False) ].shape
-        #raw_input('...')
+        #print('in group_problem:', name_problem)
+        #print(group_problem)
 
         #Group level 2: datasets, warm start length (corresponds to each point in cdf)
+        #NOTE: warm start is not propagated in sup-only and most-freq, hence we group by warm_start_multiplier
         grouped_by_dataset = group_problem.groupby(['dataset',
-                                                    'warm_start'])
+                                                    'warm_start_multiplier'])
 
         for name_dataset, group_dataset in grouped_by_dataset:
             result_table = group_dataset
 
             #print 'in group_dataset:'
-            #print name_dataset
-            #print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ].shape
-            #print group_dataset[(group_dataset['warm_start_update'] == True) & (group_dataset['interaction_update'] == False) ]
-            #raw_input('...')
+            #print(name_dataset)
             #print(result_table)
+
             #Record the error rates of all algorithms
             #Group level 3: algorithms
             new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
@@ -300,10 +299,10 @@ def plot_all(mod, all_results):
 
         #print(name_problem)
         #print(name_dataset)
-        #print(unnormalized_results)
-        #print(normalized_results)
+        print(unnormalized_results)
+        print(normalized_results)
 
-        mod.problemdir = mod.fulldir+problem_str(mod.name_problem)+'/'
+        mod.problemdir = mod.fulldir+param_to_str(dict(zip(problem_title, name_problem)))+'/'
         if not os.path.exists(mod.problemdir):
             os.makedirs(mod.problemdir)
 
@@ -398,6 +397,7 @@ def propag_opt_maj(opt_maj, other):
     repl_var = [  'corruption',
                   'warm_start_multiplier',
                   'interaction_multiplier',
+                  'inter_ws_size_ratio',
                   'explore_method'
                ]
     for ds, subtable in grouped:
@@ -435,16 +435,29 @@ def propagate(all_res):
     prop_res = pd.concat([other, prop_opt_maj, prop_sup_only], sort=True)
     return prop_res
 
+'''
 def avg_folds(all_res):
     #potential problem: last lambda, after averaging, might not make sense
     #excl = list(filter(lambda item: item != 'fold' and item != 'avg_error', list(all_res)))
     excl = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm', 'learning_rate']
     return all_res.groupby(excl).mean().reset_index()
+'''
 
 def tune_lr(all_res):
+
+    setting_with_lr = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm', 'learning_rate']
+
+    avg_folds = all_res.groupby(setting_with_lr).mean().reset_index()
+
     #excl = list(filter(lambda item: item != 'learning_rate' and item != 'avg_error', list(all_res)))
-    excl = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm']
-    return all_res.iloc[ all_res.groupby(excl)['avg_error'].idxmin(), : ]
+    setting_no_lr = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm']
+    select_lr = avg_folds.iloc[ avg_folds.groupby(setting_no_lr)['avg_error'].idxmin(), : ]
+    select_lr = select_lr.loc[:, setting_with_lr]
+    #print(select_lr.shape)
+
+    tuned = all_res.join(select_lr.set_index(setting_with_lr), on=setting_with_lr, how='inner')
+
+    return tuned
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='result summary')
@@ -483,7 +496,7 @@ if __name__ == '__main__':
     all_results = mod.all_results
     #all_results = all_results[all_results['dataset'] == 'ds_vehicle_cs_randcost_54_4.vw.gz']
     #all_results = all_results[all_results['learning_rate'] < 0.004]
-    all_results = avg_folds(all_results)
+    #all_results = avg_folds(all_results)
     all_results = tune_lr(all_results)
     all_results = propagate(all_results)
 
