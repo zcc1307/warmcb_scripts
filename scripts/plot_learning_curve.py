@@ -105,8 +105,7 @@ if __name__ == '__main__':
 
     grouped = all_res.groupby(group_vars)
     for setting, res in grouped:
-
-        group_dict = dict(zip(group_vars, setting))
+        group_dict = OrderedDict(zip(group_vars, setting))
         group_simp = replace_keys(group_dict, SIMP_MAP)
         print('plotting', param_to_str(group_simp), '...')
 
