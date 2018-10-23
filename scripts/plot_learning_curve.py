@@ -125,7 +125,8 @@ if __name__ == '__main__':
                 lambdas = lc_full[2]
                 setting_dict = dict(zip(group_vars, setting))
                 cutoff_pt = sum([wt <= row['interaction'] for wt in lc_full[0]])
-                grid_pt = int(row['interaction'] / row['interaction_multiplier'])
+                grid_pt = int(row['interaction'] / (row['interaction_multiplier'] * 4.0) )
+                #lc_cutoff = (lc_full[0][grid_pt:cutoff_pt:grid_pt], lc_full[1][grid_pt:cutoff_pt:grid_pt]) 
                 lc_cutoff = (lc_full[0][grid_pt:cutoff_pt:grid_pt], lc_full[1][grid_pt:cutoff_pt:grid_pt])
                 lc_alg[alg_name].append(lc_cutoff)
 
