@@ -6,6 +6,7 @@ import pandas as pd
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import OrderedDict
 
 class model:
     def __init__(self):
@@ -109,7 +110,7 @@ if __name__ == '__main__':
         group_simp = replace_keys(group_dict, SIMP_MAP)
         print('plotting', param_to_str(group_simp), '...')
 
-        lc_alg = {}
+        lc_alg = OrderedDict()
 
         uniq_alg = res['algorithm'].unique()
         for alg_name in uniq_alg:
@@ -126,7 +127,7 @@ if __name__ == '__main__':
                 setting_dict = dict(zip(group_vars, setting))
                 cutoff_pt = sum([wt <= row['interaction'] for wt in lc_full[0]])
                 grid_pt = int(row['interaction'] / (row['interaction_multiplier'] * 4.0) )
-                #lc_cutoff = (lc_full[0][grid_pt:cutoff_pt:grid_pt], lc_full[1][grid_pt:cutoff_pt:grid_pt]) 
+                #lc_cutoff = (lc_full[0][grid_pt:cutoff_pt:grid_pt], lc_full[1][grid_pt:cutoff_pt:grid_pt])
                 lc_cutoff = (lc_full[0][grid_pt:cutoff_pt:grid_pt], lc_full[1][grid_pt:cutoff_pt:grid_pt])
                 lc_alg[alg_name].append(lc_cutoff)
 
