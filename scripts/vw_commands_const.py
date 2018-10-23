@@ -49,6 +49,7 @@ SUMMARY_TMPLT = \
 	'warm_start_multiplier',
     'warm_start',
 	'interaction_multiplier',
+    'interaction',
     'inter_ws_size_ratio',
     'corruption',
 	'algorithm',

@@ -14,14 +14,16 @@ class model:
 def extract_lc(vw_filename):
     lc_x = []
     lc_y = []
+    lambdas = []
     results = extract_vw_output(vw_filename)
     for s in results:
         counter_new, last_lambda, actual_var, ideal_var, \
         avg_loss, last_loss, counter, weight, curr_label, curr_pred, curr_feat = s
         lc_x.append(float(weight))
         lc_y.append(float(avg_loss))
+        lambdas.append(float(last_lambda))
 
-    return (lc_x, lc_y)
+    return (lc_x, lc_y, lambdas)
 
 def plot_lcs(lc_alg, plot_name):
 
@@ -58,7 +60,7 @@ def plot_lcs(lc_alg, plot_name):
         alg_name_latex = alg_str(alg_name)
         alg_col, alg_sty = alg_color_style(alg_name)
 
-        plt.plot(lc_x, lc_y_avg, label=alg_name, color=alg_col, linestyle=alg_sty, linewidth=2.0)
+        plt.plot(lc_x, lc_y_avg, label=alg_name_latex, color=alg_col, linestyle=alg_sty, linewidth=2.0)
         lc_y_up = [avg + ci for avg, ci in zip(lc_y_avg, lc_y_ci)]
         lc_y_dn = [avg - ci for avg, ci in zip(lc_y_avg, lc_y_ci)]
         plt.fill_between(lc_x, lc_y_up, lc_y_dn, color=alg_col, linestyle=alg_sty, alpha=0.2)
@@ -89,18 +91,24 @@ if __name__ == '__main__':
     print(all_res.shape)
     print(all_res)
 
-    opt_maj_table = all_res[(all_res['algorithm'] == 'Optimal') | (all_res['algorithm'] == 'Most-Freq')]
-    large_ratio_table = all_res[all_res['interaction_multiplier'] > 180.0]
-    all_res = pd.concat([opt_maj_table, large_ratio_table])
+    #opt_maj_table = all_res[(all_res['algorithm'] == 'Optimal') | (all_res['algorithm'] == 'Most-Freq')]
+    #large_ratio_table = all_res[all_res['interaction_multiplier'] > 180.0]
+    #all_res = pd.concat([opt_maj_table, large_ratio_table])
     all_res = propagate(all_res)
 
     group_vars = ['dataset',
                    'warm_start_multiplier',
+                   'interaction_multiplier',
                    'corruption',
                    'explore_method']
 
     grouped = all_res.groupby(group_vars)
     for setting, res in grouped:
+
+        group_dict = dict(zip(group_vars, setting))
+        group_simp = replace_keys(group_dict, SIMP_MAP)
+        print('plotting', param_to_str(group_simp), '...')
+
         lc_alg = {}
 
         uniq_alg = res['algorithm'].unique()
@@ -109,18 +117,20 @@ if __name__ == '__main__':
 
         for idx, row in res.iterrows():
             alg_name = row['algorithm']
-            if alg_name == 'Sup-Only' or alg_name == 'Optimal' or alg_name == 'Most-Freq':
+            if alg_name == 'Optimal' or alg_name == 'Most-Freq':
                 lc_alg[alg_name].append(([0] , [row['avg_error']]))
             else:
-                lc_alg[alg_name].append(extract_lc(row['vw_output_name']))
+                print(alg_name, row['learning_rate'])
+                lc_full = extract_lc(row['vw_output_name'])
+                lambdas = lc_full[2]
+                setting_dict = dict(zip(group_vars, setting))
+                cutoff_pt = sum([wt <= row['interaction'] for wt in lc_full[0]])
+                grid_pt = int(row['interaction'] / row['interaction_multiplier'])
+                lc_cutoff = (lc_full[0][grid_pt:cutoff_pt:grid_pt], lc_full[1][grid_pt:cutoff_pt:grid_pt])
+                lc_alg[alg_name].append(lc_cutoff)
 
         #print(lc_alg)
-
-        group_dict = dict(zip(group_vars, setting))
         ds = remove_suffix(group_dict['dataset'])
-        group_dict.pop('dataset', None)
-        group_simp = replace_keys(group_dict, SIMP_MAP)
-
-        print('plotting', param_to_str(group_simp), '...')
+        group_simp.pop('ds', None)
         plot_name = mod.results_dir + ds + '/' + param_to_str(group_simp)
         plot_lcs(lc_alg, plot_name)

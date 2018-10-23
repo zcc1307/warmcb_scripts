@@ -31,7 +31,7 @@ class model:
 
         # use fractions instead of absolute numbers
         #self.ws_multipliers = [pow(2,i) for i in range(4)]
-        self.ws_multipliers = [pow(2,i) for i in range(4)]
+        self.ws_multipliers = [pow(2,i) for i in range(3,4)]
 
         self.choices_cb_type = ['mtr']
         #mod.choices_choices_lambda = [2,4,8]
@@ -40,7 +40,7 @@ class model:
         #self.choices_cor_type_ws = [1,2,3]
         #self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
         self.choices_cor_type_ws = [3]
-        self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
+        self.choices_cor_prob_ws = [1.0]
 
         self.choices_cor_type_inter = [1]
         self.choices_cor_prob_inter = [0.0]
@@ -100,7 +100,7 @@ def extract_vw_output(vw_filename):
         line = mat
         s = line.split()
         if len(s) >= 12:
-            print('warning: parsing vw file has some problem. The line is: ', line)
+            print('warning: parsing vw file encountered unexpected output. The line is: ', line)
             s = s[:11]
         results.append(s)
     f.close()
@@ -166,10 +166,10 @@ def gen_vw_options(mod):
     else:
         # General CB
         mod.vw_template = OrderedDict(VW_RUN_TMPLT_WARMCB)
-        mod.param['warm_start'] = mod.param['warm_start_multiplier'] * mod.param['progress']
+        mod.param['warm_start'] = mod.param['warm_start_multiplier'] * mod.param['grid_size']
         mod.param['interaction'] = mod.param['total_size'] - mod.param['warm_start']
         mod.param['warm_cb'] = mod.param['num_classes']
-        #mod.param['overwrite_label'] = mod.param['majority_class']
+        mod.param['overwrite_label'] = mod.param['majority_class']
 
         if mod.param['adf_on'] is True:
             mod.param['cb_explore_adf'] = ' '
@@ -228,8 +228,11 @@ def run_single_expt(mod):
     mod.param['data'] = mod.ds_path + str(mod.param['fold']) + '/' + mod.param['dataset']
     mod.param['total_size'] = get_num_lines(mod.param['data'])
     mod.param['num_classes'] = get_num_classes(mod.param['data'])
-    #mod.param['majority_size'], mod.param['majority_class'] = get_majority_class(mod.param['data'])
-    mod.param['progress'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
+    #mod.param['majority_size'],
+    if mod.param['cs_on'] is False:
+        mod.param['majority_class'] = get_maj_class_mc(mod.param['data'])
+    mod.param['progress'] = 1
+    mod.param['grid_size'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
     mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
     mod.vw_output_filename = mod.vw_output_dir + get_vw_out_filename(mod) + '.txt'
     #mod.param['dataset'] = remove_suffix(mod.param['data'])
@@ -291,24 +294,29 @@ def get_num_classes(ds):
     metadata_list = os.path.basename(ds).split('.')[0].split('_')[1:]
     return int(metadata_list[-1])
 
-def get_majority_class(dataset_name):
-    maj_class_str = subprocess.check_output(('zcat '+ dataset_name +' | cut -d \' \' -f 1 | sort | uniq -c | sort -r -n | head -1 | xargs '), shell=True)
-    maj_size, maj_class = maj_class_str.split()
-    return int(maj_size), int(maj_class)
+#def get_majority_class(dataset_name):
+#    maj_class_str = subprocess.check_output(('zcat '+ dataset_name +' | cut -d \' \' -f 1 | sort | uniq -c | sort -r -n | head -1 | xargs '), shell=True)
+#    maj_size, maj_class = maj_class_str.split()
+#    return int(maj_size), int(maj_class)
 
-def get_maj_error_mc(dataset_name):
+def get_class_count(dataset_name):
     count_label = {}
-    size = 0
     f = gzip.open(dataset_name, 'r')
     for line in f:
-        size += 1
         line_label = line.decode("utf-8").split('|')
         label = line_label[0].split()[0]
         if label not in count_label:
             count_label[label] = 0
         count_label[label] += 1
+    return count_label
 
-    return 1 - (float(max(count_label.values())) / size)
+def get_maj_class_mc(dataset_name):
+    count_label = get_class_count(dataset_name)
+    return max(count_label, key=count_label.get)
+
+def get_maj_error_mc(dataset_name):
+    count_label = get_class_count(dataset_name)
+    return 1 - (float(max(count_label.values())) / float(sum(count_label.values())))
 
 
 def get_maj_error_cs(dataset_name):

@@ -222,10 +222,10 @@ def get_unnormalized_results(result_table):
     new_lambda = {}
     new_size = 0
 
-    #i = 0
+    i = 0
     for idx, row in result_table.iterrows():
-        #if i == 0:
-        #    new_size = row['interaction_multiplier']
+        if i == 0:
+            new_size = row['interaction_multiplier']
 
         #if row['interaction'] == new_size:
         alg_name = row['algorithm']
@@ -254,7 +254,7 @@ def plot_all(mod, all_results):
         sizes = None
         mod.name_problem = name_problem
 
-        #print('in group_problem:', name_problem)
+        print('in group_problem:', name_problem)
         #print(group_problem)
 
         #Group level 2: datasets, warm start length (corresponds to each point in cdf)
@@ -368,7 +368,12 @@ def filter_results(mod, all_results):
         all_results = all_results[all_results['warm_start'] >= 100]
         all_results = all_results[all_results['num_classes'] >= 3]
     elif mod.filter == '8':
-        all_results = all_results[all_results['warm_start'] >= 100]
+        #NOTE: the Most-freq and Optimal's warm start value is always zero - this is just a temp fix
+        opt_maj_mask = ((all_results['algorithm'] == 'Optimal') | (all_results['algorithm'] == 'Most-Freq'))
+        opt_maj = all_results[opt_maj_mask]
+        other = all_results[~opt_maj_mask]
+        other = other[other['warm_start'] >= 100]
+        all_results = pd.concat([opt_maj, other])
 
     return all_results
 
