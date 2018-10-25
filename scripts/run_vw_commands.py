@@ -51,7 +51,7 @@ class model:
         #self.choices_cor_prob_inter = [0.0,0.5]
 
         #self.choices_epsilon = [0.05]
-        self.choices_epsilon = []
+        self.choices_epsilon = [0.05]
         self.choices_eps_t = [0.1]
         #, 1.0
         #self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
@@ -180,6 +180,8 @@ def gen_vw_options(mod):
 
         if 'eps_t' in mod.param:
             mod.vw_template['eps_t'] = 1.0
+            if mod.param['algorithm'].startswith('AwesomeBandits'):
+                mod.vw_template['t_0'] = mod.param['warm_start']
         else:
             mod.vw_template['epsilon'] = 0.0
 
@@ -231,8 +233,9 @@ def run_single_expt(mod):
     #mod.param['majority_size'],
     if mod.param['cs_on'] is False:
         mod.param['majority_class'] = get_maj_class_mc(mod.param['data'])
-    mod.param['progress'] = 1
+
     mod.param['grid_size'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
+    mod.param['progress'] = mod.param['grid_size']
     mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
     mod.vw_output_filename = mod.vw_output_dir + get_vw_out_filename(mod) + '.txt'
     #mod.param['dataset'] = remove_suffix(mod.param['data'])
