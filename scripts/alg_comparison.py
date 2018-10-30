@@ -12,7 +12,7 @@ import argparse
 import numpy as np
 from matplotlib.colors import ListedColormap
 from matplotlib.font_manager import FontProperties
-from collections import Counter
+from collections import Counter, OrderedDict
 import random
 import math
 from alg_const import noise_type_str, alg_str, alg_str_compatible, alg_color_style, alg_index
@@ -302,7 +302,7 @@ def plot_all(mod, all_results):
         print(unnormalized_results)
         print(normalized_results)
 
-        mod.problemdir = mod.fulldir+param_to_str(dict(zip(problem_title, name_problem)))+'/'
+        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(problem_title, name_problem)))+'/'
         if not os.path.exists(mod.problemdir):
             os.makedirs(mod.problemdir)
 
