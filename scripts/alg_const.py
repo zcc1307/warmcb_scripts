@@ -151,8 +151,12 @@ def get_color(alg):
     l = float(alg.split('=')[1])
     r = 50 + int(185 * l)
     g = 50 + int(185 * l)
-    b = 50 + int(185 * l)
+    b = 0
+    #50 + int(185 * l)
     return ('#%02X%02X%02X' % (r,g,b))
+
+def get_order(alg):
+    return 10.0 - float(alg.split('=')[1])
 
 def switch(input, cases, results, default_type):
     for case, result in zip(cases, results):
@@ -163,6 +167,8 @@ def switch(input, cases, results, default_type):
         return input
     elif default_type == 'color':
         return (get_color(input), 'solid')
+    elif default_type == 'order':
+        return get_order(input)
     else:
         return results[len(results)-1]
 
@@ -179,4 +185,4 @@ def alg_color_style(alg_name):
     return switch(alg_name, ALG_NAMES_SUM, ALG_COLORS_STYLES, 'color')
 
 def alg_index(alg_name):
-    return switch(alg_name, ALG_NAMES_SUM, ALG_ORDERS, 'unknown')
+    return switch(alg_name, ALG_NAMES_SUM, ALG_ORDERS, 'order')
