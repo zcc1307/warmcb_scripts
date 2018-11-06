@@ -71,14 +71,14 @@ ALG_NAMES_COMPATIBLE = \
 palette = sns.color_palette('colorblind')
 colors = palette.as_hex()
 #['black', 'magenta', 'lime', 'green', 'blue', 'darkorange','darksalmon', 'red', 'cyan']
-
+colors[1],
 ALG_COLORS = \
     [
     colors[5],
     colors[3],
     'black',
     colors[0],
-    colors[1],
+    'black',
     'black',
     colors[2],
     colors[2],
@@ -149,9 +149,12 @@ def rand_color():
 
 def get_color(alg):
     l = float(alg.split('=')[1])
-    r = 50 + int(185 * l)
-    g = 50 + int(185 * l)
-    b = 0
+    r = int(255*( (1-l) ))
+    g = int(255*( (1-l) + 0.44 * l ))
+    b = int(255*( 0.69 * l ))
+    #r = 50 + int(185 * l)
+    #g = 50 + int(185 * l)
+    #b = 0
     #50 + int(185 * l)
     return ('#%02X%02X%02X' % (r,g,b))
 
