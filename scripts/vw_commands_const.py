@@ -38,7 +38,8 @@ RESULT_TMPLT = \
 	('ideal_variance', 'iv', 0.0),
 	('last_lambda', 'll', 0.0),
     ('corruption', 'co', ''),
-    ('vw_output_name', 'von', '')
+    ('vw_output_name', 'von', ''),
+    ('central_lambda','ctl', 0.5)
 	]
 	#('optimal_approx', 'oa', False),
 	#('majority_approx', 'ma', False),
@@ -144,6 +145,7 @@ VW_RUN_TMPLT_WARMCB = \
 	 ('loss0', 0),
 	 ('loss1', 0),
 	 ('progress',2.0),
+     ('central_lambda',0.5)
 	 ]
 
 #VW_RUN_TMPLT_WARMCB_EPSILON = \
