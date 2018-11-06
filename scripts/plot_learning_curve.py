@@ -7,6 +7,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
+from random import random
 
 class model:
     def __init__(self):
@@ -54,7 +55,7 @@ def plot_lcs(lc_alg, plot_name):
             lc_ys = [lc[1] for lc in lcs]
         reps = len(lcs)
 
-        lc_y_avg = [np.mean(x) for x in zip(*lc_ys)]
+        lc_y_avg = [np.mean(x) + 0.001*random() for x in zip(*lc_ys)]
         lc_y_std = [np.std(x) / np.sqrt(reps) for x in zip(*lc_ys)]
         lc_y_ci = [1.96*y for y in lc_y_std]
 
@@ -110,10 +111,14 @@ if __name__ == '__main__':
         print('plotting', param_to_str(group_simp), '...')
 
         lc_alg = OrderedDict()
+        lambdas_alg = OrderedDict()
 
         uniq_alg = res['algorithm'].unique()
         for alg_name in uniq_alg:
             lc_alg[alg_name] = []
+            if alg_name.startswith('One-Lambda') or alg_name.startswith('AwesomeBandits'):
+                print(alg_name)
+                lambdas_alg[alg_name] = []
 
         for idx, row in res.iterrows():
             alg_name = row['algorithm']
@@ -122,16 +127,24 @@ if __name__ == '__main__':
             else:
                 print(alg_name, row['learning_rate'])
                 lc_full = extract_lc(row['vw_output_name'])
-                lambdas = lc_full[2]
+                #lambdas = lc_full[2]
                 setting_dict = dict(zip(group_vars, setting))
                 cutoff_pt = sum([wt <= row['interaction'] for wt in lc_full[0]])
                 #grid_pt = int(row['interaction'] / (row['interaction_multiplier'] * 4.0) )
                 lc_cutoff = (lc_full[0][:cutoff_pt], lc_full[1][:cutoff_pt])
+                lambdas_cutoff = (lc_full[0][:cutoff_pt], lc_full[2][:cutoff_pt])
                 #lc_cutoff = (lc_full[0][grid_pt:cutoff_pt:grid_pt], lc_full[1][grid_pt:cutoff_pt:grid_pt])
                 lc_alg[alg_name].append(lc_cutoff)
+
+                if alg_name.startswith('One-Lambda') or alg_name.startswith('AwesomeBandits'):
+                    lambdas_alg[alg_name].append(lambdas_cutoff)
 
         #print(lc_alg)
         ds = remove_suffix(group_dict['dataset'])
         group_simp.pop('ds', None)
         plot_name = mod.results_dir + ds + '/' + param_to_str(group_simp)
         plot_lcs(lc_alg, plot_name)
+
+        #print(lambdas_alg)
+        plot_name_lambda = plot_name + '_lambdas'
+        plot_lcs(lambdas_alg, plot_name_lambda)

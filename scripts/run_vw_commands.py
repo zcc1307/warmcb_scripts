@@ -18,6 +18,7 @@ class model:
         self.sup_only_on = True
         self.band_only_on = True
         self.sim_bandit_on = True
+        self.one_lambda_on = True
 
         self.algs_on = True
         self.optimal_on = True
@@ -31,7 +32,7 @@ class model:
 
         # use fractions instead of absolute numbers
         #self.ws_multipliers = [pow(2,i) for i in range(4)]
-        self.ws_multipliers = [pow(2,i) for i in range(4)]
+        self.ws_multipliers = [pow(2,i) for i in range(3,4)]
 
         self.choices_cb_type = ['mtr']
         #mod.choices_choices_lambda = [2,4,8]
@@ -39,8 +40,8 @@ class model:
 
         #self.choices_cor_type_ws = [1,2,3]
         #self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
-        self.choices_cor_type_ws = [1,2,3]
-        self.choices_cor_prob_ws = [0.0, 0.25, 0.5, 1.0]
+        self.choices_cor_type_ws = [3]
+        self.choices_cor_prob_ws = [1.0]
 
         self.choices_cor_type_inter = [1]
         self.choices_cor_prob_inter = [0.0]
@@ -51,7 +52,7 @@ class model:
         #self.choices_cor_prob_inter = [0.0,0.5]
 
         #self.choices_epsilon = [0.05]
-        self.choices_epsilon = []
+        self.choices_epsilon = [0.05]
         self.choices_eps_t = [0.1]
         #, 1.0
         #self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
