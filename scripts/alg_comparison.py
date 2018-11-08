@@ -97,7 +97,7 @@ def save_legend(mod, indices):
     #figlegend.legend(handles, labels, 'center', fontsize=26, ncol=8)
     figlegend = pylab.figure(figsize=(17,1.5))
     figlegend.legend(handles, labels, 'center', fontsize=26, ncol=3)
-    figlegend.tight_layout(pad=0)
+    #figlegend.tight_layout(pad=0)
     figlegend.savefig(mod.problemdir+'legend.pdf')
     plt.close()
 
