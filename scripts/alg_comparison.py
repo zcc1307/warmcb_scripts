@@ -216,25 +216,25 @@ def get_maj_error(maj_error_table, name_dataset):
     maj_error = maj_error_oneline.loc[maj_error_oneline.index[0], 'avg_error']
     return maj_error
 
-def get_unnormalized_results(result_table):
-    new_unnormalized_results = {}
+def get_unnorm_scores(results):
+    new_unnorm_scores = {}
     new_lr = {}
     new_lambda = {}
     new_size = 0
 
     i = 0
-    for idx, row in result_table.iterrows():
+    for idx, row in results.iterrows():
         if i == 0:
             new_size = row['interaction_multiplier']
 
         #if row['interaction'] == new_size:
         alg_name = row['algorithm']
-        new_unnormalized_results[alg_name] = row['avg_error']
+        new_unnorm_scores[alg_name] = row['avg_error']
         new_lr[alg_name] = row['learning_rate']
         new_lambda[alg_name] = row['last_lambda']
         #i += 1
 
-    return new_size, new_unnormalized_results, new_lr, new_lambda
+    return new_size, new_unnorm_scores, new_lr, new_lambda
 
 def update_result_dict(results_dict, new_result):
     if len(new_result) != len(results_dict):
