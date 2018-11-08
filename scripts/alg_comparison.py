@@ -330,6 +330,7 @@ def get_scores(results, ds_title):
     #print(name_ds)
     print(unnorm_scores)
     print(norm_scores)
+    return unnorm_scores, norm_scores, lrs, lambdas, sizes
 
 def save_to_hdf(mod):
     print('saving to hdf..')
