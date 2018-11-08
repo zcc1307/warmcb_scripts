@@ -243,76 +243,93 @@ def update_result_dict(results_dict, new_result):
     for k, v in new_result.items():
         results_dict[k].append(v)
 
-def plot_all(mod, all_results):
+def plot_by_corr(mod, all_results):
     #Group level 1: corruption mode, corruption prob, warm start - bandit ratio (each group corresponds to one cdf plot)
     problem_title = ['corruption','inter_ws_size_ratio','explore_method']
     grouped_by_problem = all_results.groupby(problem_title)
 
     for name_problem, group_problem in grouped_by_problem:
-        normalized_results = None
-        unnormalized_results = None
-        sizes = None
+        print('in group_problem:', name_problem)
         mod.name_problem = name_problem
 
-        print('in group_problem:', name_problem)
-        #print(group_problem)
-
-        #Group level 2: datasets, warm start length (corresponds to each point in cdf)
-        #NOTE: warm start is not propagated in sup-only and most-freq, hence we group by warm_start_multiplier
-        grouped_by_dataset = group_problem.groupby(['dataset',
-                                                    'warm_start_multiplier'])
-
-        for name_dataset, group_dataset in grouped_by_dataset:
-            result_table = group_dataset
-
-            #print 'in group_dataset:'
-            #print(name_dataset)
-            #print(result_table)
-
-            #Record the error rates of all algorithms
-            #Group level 3: algorithms
-            new_size, new_unnormalized_result, new_lr, new_lambda = get_unnormalized_results(result_table)
-            #print(len(new_unnormalized_result))
-            if len(new_unnormalized_result) != 7:
-                continue
-            new_normalized_result = normalize_score(new_unnormalized_result, mod)
-
-            new_normalized_result.pop('Optimal', None)
-            new_lr.pop('Optimal', None)
-            new_lambda.pop('Optimal', None)
-            new_lr.pop('Most-Freq', None)
-            new_lambda.pop('Most-Freq', None)
-
-            #first time - generate names of algorithms considered
-            if normalized_results is None:
-                sizes = []
-                unnormalized_results = dict([(k,[]) for k in new_unnormalized_result.keys()])
-                normalized_results = dict([(k,[]) for k in new_normalized_result.keys()])
-                lrs = dict([(k,[]) for k in new_lr.keys()])
-                lambdas = dict([(k,[]) for k in new_lambda.keys()])
-
-            update_result_dict(unnormalized_results, new_unnormalized_result)
-            update_result_dict(normalized_results, new_normalized_result)
-            update_result_dict(lrs, new_lr)
-            update_result_dict(lambdas, new_lambda)
-            sizes.append(new_size)
-
-        #print(name_problem)
-        #print(name_dataset)
-        print(unnormalized_results)
-        print(normalized_results)
+        ds_title = ['dataset','warm_start_multiplier']
+        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_problem, ds_title)
 
         mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(problem_title, name_problem)))+'/'
         if not os.path.exists(mod.problemdir):
             os.makedirs(mod.problemdir)
 
         if mod.pair_comp_on is True:
-            plot_all_pair_comp(unnormalized_results, sizes, mod)
+            plot_all_pair_comp(unnorm_scores, sizes, mod)
         if mod.cdf_on is True:
-            plot_all_cdfs(normalized_results, mod)
+            plot_all_cdfs(norm_scores, mod)
 
         plot_all_lrs(lrs, mod)
         plot_all_lambdas(lambdas, mod)
+
+def plot_all(mod, all_results):
+    expl_title = ['explore_method']
+    grouped_by_expl = all_results.groupby(expl_title)
+
+    for expl, group_expl in grouped_by_expl:
+        ds_title = ['corruption','inter_ws_size_ratio', 'dataset','warm_start_multiplier']
+        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_expl, ds_title)
+        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(expl_title, expl)))+'/'
+        if not os.path.exists(mod.problemdir):
+            os.makedirs(mod.problemdir)
+        if mod.pair_comp_on is True:
+            plot_all_pair_comp(unnorm_scores, sizes, mod)
+        if mod.cdf_on is True:
+            plot_all_cdfs(norm_scores, mod)
+
+        plot_all_lrs(lrs, mod)
+        plot_all_lambdas(lambdas, mod)
+
+def get_scores(results, ds_title):
+    norm_scores = None
+    unnorm_scores = None
+    sizes = None
+
+    #Group level 2: datasets, warm start length (corresponds to each point in cdf)
+    #NOTE: warm start is not propagated in sup-only and most-freq, hence we group by warm_start_multiplier
+    grouped_by_ds = results.groupby(ds_title)
+
+    for name_ds, group_ds in grouped_by_dataset:
+        #print 'in group_dataset:'
+        #print(name_dataset)
+        #print(group_dataset)
+
+        #Record the error rates of all algorithms
+        #Group level 3: algorithms
+        new_size, new_unnorm_score, new_lr, new_lambda = get_unnorm_scores(group_dataset)
+        #print(len(new_unnormalized_result))
+        if len(new_unnorm_score) != 7:
+            continue
+        new_norm_score = normalize_score(new_unnorm_score, mod)
+
+        new_norm_score.pop('Optimal', None)
+        new_lr.pop('Optimal', None)
+        new_lambda.pop('Optimal', None)
+        new_lr.pop('Most-Freq', None)
+        new_lambda.pop('Most-Freq', None)
+
+        #first time - generate names of algorithms considered
+        if norm_scores is None:
+            sizes = []
+            unnorm_scores = dict([(k,[]) for k in new_unnorm_score.keys()])
+            norm_scores = dict([(k,[]) for k in new_norm_score.keys()])
+            lrs = dict([(k,[]) for k in new_lr.keys()])
+            lambdas = dict([(k,[]) for k in new_lambda.keys()])
+
+        update_result_dict(unnorm_scores, new_unnorm_score)
+        update_result_dict(normalized_scores, new_norm_score)
+        update_result_dict(lrs, new_lr)
+        update_result_dict(lambdas, new_lambda)
+        sizes.append(new_size)
+
+    #print(name_ds)
+    print(unnormalized_results)
+    print(normalized_results)
 
 def save_to_hdf(mod):
     print('saving to hdf..')
