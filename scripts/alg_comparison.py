@@ -294,14 +294,14 @@ def get_scores(results, ds_title):
     #NOTE: warm start is not propagated in sup-only and most-freq, hence we group by warm_start_multiplier
     grouped_by_ds = results.groupby(ds_title)
 
-    for name_ds, group_ds in grouped_by_dataset:
+    for name_ds, group_ds in grouped_by_ds:
         #print 'in group_dataset:'
         #print(name_dataset)
         #print(group_dataset)
 
         #Record the error rates of all algorithms
         #Group level 3: algorithms
-        new_size, new_unnorm_score, new_lr, new_lambda = get_unnorm_scores(group_dataset)
+        new_size, new_unnorm_score, new_lr, new_lambda = get_unnorm_scores(group_ds)
         #print(len(new_unnormalized_result))
         if len(new_unnorm_score) != 7:
             continue
@@ -322,14 +322,14 @@ def get_scores(results, ds_title):
             lambdas = dict([(k,[]) for k in new_lambda.keys()])
 
         update_result_dict(unnorm_scores, new_unnorm_score)
-        update_result_dict(normalized_scores, new_norm_score)
+        update_result_dict(norm_scores, new_norm_score)
         update_result_dict(lrs, new_lr)
         update_result_dict(lambdas, new_lambda)
         sizes.append(new_size)
 
     #print(name_ds)
-    print(unnormalized_results)
-    print(normalized_results)
+    print(unnorm_scores)
+    print(norm_scores)
 
 def save_to_hdf(mod):
     print('saving to hdf..')
