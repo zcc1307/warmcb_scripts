@@ -272,9 +272,10 @@ def plot_all(mod, all_results):
     grouped_by_expl = all_results.groupby(expl_title)
 
     for expl, group_expl in grouped_by_expl:
+        print(expl)
         ds_title = ['corruption','inter_ws_size_ratio', 'dataset','warm_start_multiplier']
         unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_expl, ds_title)
-        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(expl_title, expl)))+'/'
+        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(expl_title, [expl])))+'/'
         if not os.path.exists(mod.problemdir):
             os.makedirs(mod.problemdir)
         if mod.pair_comp_on is True:
@@ -296,13 +297,14 @@ def get_scores(results, ds_title):
 
     for name_ds, group_ds in grouped_by_ds:
         #print 'in group_dataset:'
-        #print(name_dataset)
-        #print(group_dataset)
+        #print(name_ds)
+        #print(group_ds)
 
         #Record the error rates of all algorithms
         #Group level 3: algorithms
         new_size, new_unnorm_score, new_lr, new_lambda = get_unnorm_scores(group_ds)
-        #print(len(new_unnormalized_result))
+        #print(len(new_unnorm_score))
+
         if len(new_unnorm_score) != 7:
             continue
         new_norm_score = normalize_score(new_unnorm_score, mod)
@@ -386,12 +388,13 @@ def filter_results(mod, all_results):
         all_results = all_results[all_results['warm_start'] >= 100]
         all_results = all_results[all_results['num_classes'] >= 3]
     elif mod.filter == '8':
+        all_results = all_results[all_results['warm_start'] >= 100]
         #NOTE: the Most-freq and Optimal's warm start value is always zero - this is just a temp fix
-        opt_maj_mask = ((all_results['algorithm'] == 'Optimal') | (all_results['algorithm'] == 'Most-Freq'))
-        opt_maj = all_results[opt_maj_mask]
-        other = all_results[~opt_maj_mask]
-        other = other[other['warm_start'] >= 100]
-        all_results = pd.concat([opt_maj, other])
+        #opt_maj_mask = ((all_results['algorithm'] == 'Optimal') | (all_results['algorithm'] == 'Most-Freq'))
+        #opt_maj = all_results[opt_maj_mask]
+        #other = all_results[~opt_maj_mask]
+        #other = other[other['warm_start'] >= 100]
+        #all_results = pd.concat([opt_maj, other])
 
     return all_results
 
@@ -417,12 +420,17 @@ def cartesian(df1, df2):
 def propag_opt_maj(opt_maj, other):
     grouped = other.groupby(['dataset'])
     opt_maj_propag = []
+    #NOTE: we need warm start / interaction value to be propagated, in order to
+    #apply the filtering correctly
     repl_var = [  'corruption',
                   'warm_start_multiplier',
                   'interaction_multiplier',
                   'inter_ws_size_ratio',
-                  'explore_method'
+                  'explore_method',
+                  'warm_start',
+                  'interaction'
                ]
+
     for ds, subtable in grouped:
         #print(ds)
         subt = subtable[repl_var]
@@ -467,7 +475,7 @@ def avg_folds(all_res):
 '''
 
 def tune_lr(all_res):
-
+    print('tuning learning rates..')
     setting_with_lr = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm', 'learning_rate']
 
     avg_folds = all_res.groupby(setting_with_lr).mean().reset_index()
@@ -517,19 +525,28 @@ if __name__ == '__main__':
         load_from_sum(mod)
 
     all_results = mod.all_results
+    all_results['learning_rate'] = all_results['learning_rate'].astype(float)
+    mod.learning_rates = sorted(all_results.learning_rate.unique())
+    #import pdb; pdb.set_trace()
+
+    #all_results[(all_results['corruption'] == 'st,ctws=1,cpws=0.0,cti=1,cpi=0.0') &(all_results['inter_ws_size_ratio'] == 2.875) & (all_results['dataset'] == 'ds_1038_2.vw.gz')& (all_results['warm_start_multiplier'] == 8) & (all_results['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=8')]
+
+    #tuned_results[(tuned_results['corruption'] == 'st,ctws=1,cpws=0.0,cti=1,cpi=0.0') &(tuned_results['inter_ws_size_ratio'] == 2.875) & (tuned_results['dataset'] == 'ds_1038_2.vw.gz')& (tuned_results['warm_start_multiplier'] == 8) & (tuned_results['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=8')]
+
+    #all_results['algorithm'] = all_results['algorithm'].astype(str)
+    #all_results = all_results[all_results.apply(lambda x: not(x['algorithm'].startswith('On')), axis=1)]
     #all_results = all_results[all_results['dataset'] == 'ds_vehicle_cs_randcost_54_4.vw.gz']
     #all_results = all_results[all_results['learning_rate'] < 0.004]
     #all_results = avg_folds(all_results)
-    all_results = tune_lr(all_results)
-    all_results = propagate(all_results)
+    tuned_results = tune_lr(all_results)
+    propag_results = propagate(tuned_results)
 
     #all_results = all_results.loc[:, ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm', 'learning_rate', 'avg_error']]
     #all_results = all_results[all_results['corrupt_prob_warm_start'] < 0.6]
     #ignore the choices_lambda = 4 row
     #all_results = all_results[(all_results['choices_lambda'] != 4)]
     #all_results = all_results[(all_results['choices_lambda'] != 8)]
-    all_results['learning_rate'] = all_results['learning_rate'].astype(float)
-    mod.learning_rates = sorted(all_results.learning_rate.unique())
-    all_results = filter_results(mod, all_results)
+    filt_results = filter_results(mod, propag_results)
 
-    plot_all(mod, all_results)
+    plot_all(mod, filt_results)
+    #plot_by_corr(mod, filt_results)
