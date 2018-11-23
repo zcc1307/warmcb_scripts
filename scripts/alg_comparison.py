@@ -17,6 +17,7 @@ import random
 import math
 from alg_const import noise_type_str, alg_str, alg_str_compatible, alg_color_style, alg_index
 from run_vw_commands import param_to_str
+from random import shuffle
 
 pd.set_option('display.max_columns', 200)
 pd.set_option('display.max_rows', 200)
@@ -35,7 +36,8 @@ def sum_files(result_path):
 def parse_sum_file(sum_filename):
     f = open(sum_filename, 'r')
     table = pd.read_table(f, sep='\s+',lineterminator='\n',error_bad_lines=False)
-
+    if 'fold' not in list(table):
+        table = pd.DataFrame()
     return table
 
 def get_z_scores(errors_1, errors_2, sizes):
@@ -286,10 +288,66 @@ def plot_all(mod, all_results):
         plot_all_lrs(lrs, mod)
         plot_all_lambdas(lambdas, mod)
 
+def insert_scores(scores_all, scores_new, mode):
+    for k, v in scores_new.items():
+        if k not in scores_all.keys():
+            scores_all[k] = []
+
+        if mode == 'extend':
+            scores_all[k] += v
+        else:
+            scores_all[k].append(v)
+
+def plot_all_eq(mod, all_results):
+    for expl, group_expl in all_results.groupby(['explore_method']):
+        norm_scores_all = {}
+        for cor, group_cor in group_expl.groupby(['corruption']):
+            norm_scores_cor = {}
+            print('corruption = ', cor)
+            for ratio, group_ratio in group_cor.groupby(['inter_ws_size_ratio']):
+                norm_scores_ratio = {}
+                for set, group_set in group_ratio.groupby(['dataset']):
+                    unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_set, ['warm_start_multiplier'])
+                    if norm_scores is not None:
+                        avg_norm_scores = {k: [(sum(v) / len(v))] for k,v in norm_scores.items()}
+                        insert_scores(norm_scores_ratio, avg_norm_scores, 'extend')
+
+                insert_scores(norm_scores_cor, norm_scores_ratio, 'append')
+                print('ratio = ', ratio)
+                for k, v in norm_scores_ratio.items():
+                    print(k, len(v))
+            insert_scores(norm_scores_all, norm_scores_cor, 'extend')
+
+        #print(norm_scores_all)
+
+        group_lens = [len(scores) for scores in list(norm_scores_all.values())[0]]
+        sample_size = min(group_lens)
+        sample_mask = []
+        for group_len in group_lens:
+            group_mask = [True for i in range(sample_size)] + [False for i in range(group_len-sample_size)]
+            shuffle(group_mask)
+            sample_mask.append(group_mask)
+
+        norm_scores_sampled = {}
+        for alg, scores in norm_scores_all.items():
+            norm_scores_sampled[alg] = []
+            for group_scores, group_mask in zip(scores, sample_mask):
+                for score, flag in zip(group_scores, group_mask):
+                    if flag:
+                        norm_scores_sampled[alg].append(score)
+
+        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(['explore_method'], [expl])))+'/'
+        if not os.path.exists(mod.problemdir):
+            os.makedirs(mod.problemdir)
+        plot_all_cdfs(norm_scores_sampled, mod)
+
+
 def get_scores(results, ds_title):
     norm_scores = None
     unnorm_scores = None
     sizes = None
+    lrs = None
+    lambdas = None
 
     #Group level 2: datasets, warm start length (corresponds to each point in cdf)
     #NOTE: warm start is not propagated in sup-only and most-freq, hence we group by warm_start_multiplier
@@ -305,7 +363,7 @@ def get_scores(results, ds_title):
         new_size, new_unnorm_score, new_lr, new_lambda = get_unnorm_scores(group_ds)
         #print(len(new_unnorm_score))
 
-        if len(new_unnorm_score) != 7:
+        if len(new_unnorm_score) != 7 or 'Optimal' not in new_unnorm_score.keys():
             continue
         new_norm_score = normalize_score(new_unnorm_score, mod)
 
@@ -330,8 +388,8 @@ def get_scores(results, ds_title):
         sizes.append(new_size)
 
     #print(name_ds)
-    print(unnorm_scores)
-    print(norm_scores)
+    #print(unnorm_scores)
+    #print(norm_scores)
     return unnorm_scores, norm_scores, lrs, lambdas, sizes
 
 def save_to_hdf(mod):
@@ -389,6 +447,19 @@ def filter_results(mod, all_results):
         all_results = all_results[all_results['num_classes'] >= 3]
     elif mod.filter == '8':
         all_results = all_results[all_results['warm_start'] >= 100]
+    elif mod.filter == '9':
+        all_results = all_results[all_results['warm_start'] >= 100]
+        all_results = all_results[all_results.apply(lambda x: x['corruption'].startswith('st,ctws=1'), axis=1)]
+    elif mod.filter == '10':
+        all_results = all_results[all_results['warm_start'] >= 100]
+        all_results = all_results[all_results.apply(lambda x: not(x['corruption'].startswith('st,ctws=1')), axis=1)]
+    elif mod.filter == '11':
+        all_results = all_results[all_results['warm_start'] >= 100]
+        all_results = all_results[all_results.apply(lambda x: x['corruption'].startswith('st,ctws=2'), axis=1)]
+    elif mod.filter == '12':
+        all_results = all_results[all_results['warm_start'] >= 100]
+        all_results = all_results[all_results.apply(lambda x: x['corruption'].startswith('st,ctws=3'), axis=1)]
+
         #NOTE: the Most-freq and Optimal's warm start value is always zero - this is just a temp fix
         #opt_maj_mask = ((all_results['algorithm'] == 'Optimal') | (all_results['algorithm'] == 'Most-Freq'))
         #opt_maj = all_results[opt_maj_mask]
@@ -498,6 +569,7 @@ if __name__ == '__main__':
     parser.add_argument('--cached', action='store_true')
     parser.add_argument('--normalize_type', type=int, default=1)
     parser.add_argument('--pair_comp', action='store_true')
+    parser.add_argument('--agg_mode', default='all')
     #1: normalized score;
     #2: bandit only centered score;
     #3: raw score
@@ -534,7 +606,8 @@ if __name__ == '__main__':
     #tuned_results[(tuned_results['corruption'] == 'st,ctws=1,cpws=0.0,cti=1,cpi=0.0') &(tuned_results['inter_ws_size_ratio'] == 2.875) & (tuned_results['dataset'] == 'ds_1038_2.vw.gz')& (tuned_results['warm_start_multiplier'] == 8) & (tuned_results['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=8')]
 
     #all_results['algorithm'] = all_results['algorithm'].astype(str)
-    #all_results = all_results[all_results.apply(lambda x: not(x['algorithm'].startswith('On')), axis=1)]
+    all_results = all_results[all_results.apply(lambda x: not(x['algorithm'].startswith('On')), axis=1)]
+    all_results = all_results[all_results.apply(lambda x: not(x['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=16'), axis=1)]
     #all_results = all_results[all_results['dataset'] == 'ds_vehicle_cs_randcost_54_4.vw.gz']
     #all_results = all_results[all_results['learning_rate'] < 0.004]
     #all_results = avg_folds(all_results)
@@ -548,5 +621,9 @@ if __name__ == '__main__':
     #all_results = all_results[(all_results['choices_lambda'] != 8)]
     filt_results = filter_results(mod, propag_results)
 
-    plot_all(mod, filt_results)
-    #plot_by_corr(mod, filt_results)
+    if args.agg_mode == 'all':
+        plot_all(mod, filt_results)
+    if args.agg_mode == 'all_eq':
+        plot_all_eq(mod, filt_results)
+    elif args.agg_mode == 'corr':
+        plot_by_corr(mod, filt_results)

@@ -155,7 +155,7 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
                      'weighting_scheme': 2}
                  ],
                  [
-                     {'validation_method':2},
+                    {'validation_method':2},
                     {'validation_method':3}
                  ]
             ]
@@ -172,9 +172,9 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
                      'warm_start_type': 1,
                      'weighting_scheme': 1,
                      'validation_method': 1,
-                      # for time-varying epsilon
+                     # for time-varying epsilon
                      #'eps_t':0.1,
-                     'lambda_scheme': 2,
+                     'lambda_scheme': 4,
                      # for fixed epsilon
                      #'epsilon': 0.05,
                      #'lambda_scheme': 4
@@ -296,9 +296,9 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
                       'warm_start_update': True,
                       'interaction_update': True,
                       'warm_start_type': 1,
-                     'validation_method': 1,
+                      'validation_method': 1,
                       'lambda_scheme': 5,
-                     'central_lambda': cl
+                      'central_lambda': cl
                       }
                      for cl in cls
                  ]

@@ -52,7 +52,7 @@ class model:
         #self.choices_cor_prob_inter = [0.0,0.5]
 
         #self.choices_epsilon = [0.05]
-        self.choices_epsilon = []
+        self.choices_epsilon = [0.05]
         self.choices_eps_t = [0.1]
         #, 1.0
         #self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
@@ -195,6 +195,7 @@ def gen_vw_options(mod):
 def execute_vw(mod):
     gen_vw_options(mod)
     cmd = gen_vw_command(mod)
+    print(mod.param['algorithm'])
     print(cmd, '\n')
     f = open(mod.vw_output_filename, 'w')
     f.write(cmd+'\n')
