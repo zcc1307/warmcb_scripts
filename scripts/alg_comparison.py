@@ -246,94 +246,6 @@ def update_result_dict(results_dict, new_result):
 
     for k, v in new_result.items():
         results_dict[k].append(v)
-'''
-def plot_by_corr(mod, all_results):
-    #Group level 1: corruption mode, corruption prob, warm start - bandit ratio (each group corresponds to one cdf plot)
-    problem_title = ['corruption','inter_ws_size_ratio','explore_method']
-    grouped_by_problem = all_results.groupby(problem_title)
-
-    for name_problem, group_problem in grouped_by_problem:
-        print('in group_problem:', name_problem)
-        mod.name_problem = name_problem
-
-        ds_title = ['dataset','warm_start_multiplier']
-        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_problem, ds_title)
-
-        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(problem_title, name_problem)))+'/'
-        if not os.path.exists(mod.problemdir):
-            os.makedirs(mod.problemdir)
-
-        if mod.pair_comp_on is True:
-            plot_all_pair_comp(unnorm_scores, sizes, mod)
-        if mod.cdf_on is True:
-            plot_all_cdfs(norm_scores, mod)
-
-        plot_all_lrs(lrs, mod)
-        plot_all_lambdas(lambdas, mod)
-
-def plot_all(mod, all_results):
-    expl_title = ['explore_method']
-    grouped_by_expl = all_results.groupby(expl_title)
-
-    for expl, group_expl in grouped_by_expl:
-        print(expl)
-        ds_title = ['corruption','inter_ws_size_ratio', 'dataset','warm_start_multiplier']
-        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_expl, ds_title)
-        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(expl_title, [expl])))+'/'
-        if not os.path.exists(mod.problemdir):
-            os.makedirs(mod.problemdir)
-        if mod.pair_comp_on is True:
-            plot_all_pair_comp(unnorm_scores, sizes, mod)
-        if mod.cdf_on is True:
-            plot_all_cdfs(norm_scores, mod)
-
-        plot_all_lrs(lrs, mod)
-        plot_all_lambdas(lambdas, mod)
-
-def plot_agg_corr_prob(mod, all_results):
-    problem_title = ['corr_type','inter_ws_size_ratio','explore_method']
-    grouped_by_problem = all_results.groupby(problem_title)
-    for name_problem, group_problem in grouped_by_problem:
-        print('in group_problem:', name_problem)
-        mod.name_problem = name_problem
-
-        ds_title = ['corr_prob', 'dataset', 'warm_start_multiplier']
-        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_problem, ds_title)
-
-        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(problem_title, name_problem)))+'/'
-        if not os.path.exists(mod.problemdir):
-            os.makedirs(mod.problemdir)
-
-        if mod.pair_comp_on is True:
-            plot_all_pair_comp(unnorm_scores, sizes, mod)
-        if mod.cdf_on is True:
-            plot_all_cdfs(norm_scores, mod)
-
-        plot_all_lrs(lrs, mod)
-        plot_all_lambdas(lambdas, mod)
-
-def plot_agg_ratio(mod, all_results):
-    problem_title = ['corruption','explore_method']
-    grouped_by_problem = all_results.groupby(problem_title)
-    for name_problem, group_problem in grouped_by_problem:
-        print('in group_problem:', name_problem)
-        mod.name_problem = name_problem
-
-        ds_title = ['inter_ws_size_ratio', 'dataset', 'warm_start_multiplier']
-        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_problem, ds_title)
-
-        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(problem_title, name_problem)))+'/'
-        if not os.path.exists(mod.problemdir):
-            os.makedirs(mod.problemdir)
-
-        if mod.pair_comp_on is True:
-            plot_all_pair_comp(unnorm_scores, sizes, mod)
-        if mod.cdf_on is True:
-            plot_all_cdfs(norm_scores, mod)
-
-        plot_all_lrs(lrs, mod)
-        plot_all_lambdas(lambdas, mod)
-'''
 
 def plot_agg_ratio(mod, all_results):
     return plot_bilevel(mod, all_results, ['corruption','explore_method'], ['inter_ws_size_ratio', 'dataset', 'warm_start_multiplier'])
@@ -352,10 +264,6 @@ def plot_agg_corr_prob(mod, all_results):
 
 def plot_agg_no(mod, all_results):
     return plot_bilevel(mod, all_results, ['corruption','inter_ws_size_ratio','explore_method'], ['dataset','warm_start_multiplier'])
-
-
-
-
 
 def avg_scores(group_cor):
     norm_scores_cor = {}
@@ -430,37 +338,6 @@ def insert_scores(scores_all, scores_new, mode):
             scores_all[k] += v
         else:
             scores_all[k].append(v)
-'''
-def plot_all_eq(mod, all_results):
-    for expl, group_expl in all_results.groupby(['explore_method']):
-        norm_scores_all = {}
-        for cor, group_cor in group_expl.groupby(['corruption']):
-            norm_scores_cor = {}
-            print('corruption = ', cor)
-            for ratio, group_ratio in group_cor.groupby(['inter_ws_size_ratio']):
-                norm_scores_ratio = {}
-                for set, group_set in group_ratio.groupby(['dataset']):
-                    unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_set, ['warm_start_multiplier'])
-                    if norm_scores is not None:
-                        avg_norm_scores = {k: [(sum(v) / len(v))] for k,v in norm_scores.items()}
-                        insert_scores(norm_scores_ratio, avg_norm_scores, 'extend')
-
-                insert_scores(norm_scores_cor, norm_scores_ratio, 'append')
-                print('ratio = ', ratio)
-                for k, v in norm_scores_ratio.items():
-                    print(k, len(v))
-            insert_scores(norm_scores_all, norm_scores_cor, 'extend')
-
-        #print(norm_scores_all)
-        norm_scores_sampled = equalize_sampling(norm_scores_all)
-
-        #print(alg, len(norm_scores_sampled[alg]))
-
-        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(['explore_method'], [expl])))+'/'
-        if not os.path.exists(mod.problemdir):
-            os.makedirs(mod.problemdir)
-        plot_all_cdfs(norm_scores_sampled, mod)
-'''
 
 def equalize_sampling(norm_scores_all):
     group_lens = [len(scores) for scores in list(norm_scores_all.values())[0]]
