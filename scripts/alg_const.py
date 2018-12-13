@@ -1,5 +1,6 @@
 import seaborn as sns
 import random
+import re
 
 ALG_NAMES_SUM = \
     ['Most-Freq',
@@ -189,3 +190,45 @@ def alg_color_style(alg_name):
 
 def alg_index(alg_name):
     return switch(alg_name, ALG_NAMES_SUM, ALG_ORDERS, 'order')
+
+def corr_res(corr):
+    pat = 'ctws=([0-9]+),cpws=([0-9]+\.[0-9]+)'
+    rgx = re.compile(pat, flags=re.M)
+    matched = rgx.findall(corr)
+    corr_type_str = noise_type_str(int(matched[0][0]))
+    corr_prob_str = matched[0][1]
+
+    if float(corr_prob_str) < 0.001:
+        return "noiseless"
+    else:
+        return "{}, p = {}".format(corr_type_str, corr_prob_str)
+
+def expl_res(expl):
+    pat = 'expl,eps=([0-9]+\.[0-9]+)'
+    rgx = re.compile(pat, flags=re.M)
+    matched = rgx.findall(expl)
+    expl_prob = matched[0]
+    return "$\epsilon$ = {}".format(expl_prob)
+
+def ratio_res(ratio):
+    return "ratio = {}".format(ratio)
+
+#['corr_type','inter_ws_size_ratio','explore_method']
+def make_header(setting):
+    s = ""
+    counter = 0
+    for k, v in setting.items():
+        if k == 'explore_method':
+            s += expl_res(v)
+        elif k == 'corruption':
+            s += corr_res(v)
+        elif k == 'inter_ws_size_ratio':
+            s += ratio_res(v)
+        elif k == 'corr_type':
+            s += noise_type_str(v)
+
+        counter += 1
+        if counter != len(setting):
+            s += ", "
+
+    return s

@@ -15,9 +15,10 @@ from matplotlib.font_manager import FontProperties
 from collections import Counter, OrderedDict
 import random
 import math
-from alg_const import noise_type_str, alg_str, alg_str_compatible, alg_color_style, alg_index
+from alg_const import noise_type_str, alg_str, alg_str_compatible, alg_color_style, alg_index, make_header
 from run_vw_commands import param_to_str
 from random import shuffle
+import re
 
 pd.set_option('display.max_columns', 200)
 pd.set_option('display.max_rows', 200)
@@ -36,6 +37,7 @@ def sum_files(result_path):
 def parse_sum_file(sum_filename):
     f = open(sum_filename, 'r')
     table = pd.read_table(f, sep='\s+',lineterminator='\n',error_bad_lines=False)
+    print(table['fold'].unique())
     if 'fold' not in list(table):
         table = pd.DataFrame()
     return table
@@ -131,11 +133,11 @@ def plot_all_cdfs(alg_results, mod):
     #'axes.labelsize': 24, 'axes.titlesize':26, 'xtick.labelsize':20,
     #'ytick.labelsize':20 }
     #plt.rcParams.update(params)
-    #plt.xlabel('Normalized error',fontsize=34)
-    #plt.ylabel('Cumulative frequency', fontsize=34)
-    #plt.title(problem_text(mod.name_problem), fontsize=36)
-    plt.xticks(fontsize=30)
-    plt.yticks(fontsize=30)
+    plt.xlabel('Normalized error',fontsize=34)
+    plt.ylabel('Cumulative frequency', fontsize=34)
+    plt.title(mod.header, fontsize=20)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
     plt.tight_layout(pad=0)
 
     ax = plt.gca()
@@ -244,7 +246,7 @@ def update_result_dict(results_dict, new_result):
 
     for k, v in new_result.items():
         results_dict[k].append(v)
-
+'''
 def plot_by_corr(mod, all_results):
     #Group level 1: corruption mode, corruption prob, warm start - bandit ratio (each group corresponds to one cdf plot)
     problem_title = ['corruption','inter_ws_size_ratio','explore_method']
@@ -288,6 +290,137 @@ def plot_all(mod, all_results):
         plot_all_lrs(lrs, mod)
         plot_all_lambdas(lambdas, mod)
 
+def plot_agg_corr_prob(mod, all_results):
+    problem_title = ['corr_type','inter_ws_size_ratio','explore_method']
+    grouped_by_problem = all_results.groupby(problem_title)
+    for name_problem, group_problem in grouped_by_problem:
+        print('in group_problem:', name_problem)
+        mod.name_problem = name_problem
+
+        ds_title = ['corr_prob', 'dataset', 'warm_start_multiplier']
+        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_problem, ds_title)
+
+        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(problem_title, name_problem)))+'/'
+        if not os.path.exists(mod.problemdir):
+            os.makedirs(mod.problemdir)
+
+        if mod.pair_comp_on is True:
+            plot_all_pair_comp(unnorm_scores, sizes, mod)
+        if mod.cdf_on is True:
+            plot_all_cdfs(norm_scores, mod)
+
+        plot_all_lrs(lrs, mod)
+        plot_all_lambdas(lambdas, mod)
+
+def plot_agg_ratio(mod, all_results):
+    problem_title = ['corruption','explore_method']
+    grouped_by_problem = all_results.groupby(problem_title)
+    for name_problem, group_problem in grouped_by_problem:
+        print('in group_problem:', name_problem)
+        mod.name_problem = name_problem
+
+        ds_title = ['inter_ws_size_ratio', 'dataset', 'warm_start_multiplier']
+        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_problem, ds_title)
+
+        mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(problem_title, name_problem)))+'/'
+        if not os.path.exists(mod.problemdir):
+            os.makedirs(mod.problemdir)
+
+        if mod.pair_comp_on is True:
+            plot_all_pair_comp(unnorm_scores, sizes, mod)
+        if mod.cdf_on is True:
+            plot_all_cdfs(norm_scores, mod)
+
+        plot_all_lrs(lrs, mod)
+        plot_all_lambdas(lambdas, mod)
+'''
+
+def plot_agg_ratio(mod, all_results):
+    return plot_bilevel(mod, all_results, ['corruption','explore_method'], ['inter_ws_size_ratio', 'dataset', 'warm_start_multiplier'])
+
+def plot_agg_ratio_eq(mod, all_results):
+    return plot_eq(mod, all_results, ['corruption', 'explore_method'], [])
+
+def plot_agg_all(mod, all_results):
+    return plot_bilevel(mod, all_results, ['explore_method'], ['corruption','inter_ws_size_ratio', 'dataset','warm_start_multiplier'])
+
+def plot_agg_all_eq(mod, all_results):
+    return plot_eq(mod, all_results, ['explore_method'], ['corruption'])
+
+def plot_agg_corr_prob(mod, all_results):
+    return plot_bilevel(mod, all_results, ['corr_type','inter_ws_size_ratio','explore_method'],  ['corr_prob', 'dataset', 'warm_start_multiplier'])
+
+def plot_agg_no(mod, all_results):
+    return plot_bilevel(mod, all_results, ['corruption','inter_ws_size_ratio','explore_method'], ['dataset','warm_start_multiplier'])
+
+
+
+
+
+def avg_scores(group_cor):
+    norm_scores_cor = {}
+    for ratio, group_ratio in group_cor.groupby(['inter_ws_size_ratio']):
+        norm_scores_ratio = {}
+        for set, group_set in group_ratio.groupby(['dataset']):
+            unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_set, ['warm_start_multiplier'])
+            if norm_scores is not None:
+                avg_norm_scores = {k: [(sum(v) / len(v))] for k,v in norm_scores.items()}
+                insert_scores(norm_scores_ratio, avg_norm_scores, 'extend')
+
+        insert_scores(norm_scores_cor, norm_scores_ratio, 'append')
+        print('ratio = ', ratio)
+        for k, v in norm_scores_ratio.items():
+            print(k, len(v))
+    return norm_scores_cor
+
+def plot_eq(mod, all_results, enum, agg_high):
+    for expl, group_expl in all_results.groupby(enum):
+        norm_scores_all = {}
+
+        if len(enum) == 1:
+            expt_dict = OrderedDict(zip(enum, [expl]))
+        else:
+            expt_dict = OrderedDict(zip(enum, list(expl)))
+
+        mod.header = make_header(expt_dict)
+
+        if len(agg_high) == 0:
+            norm_scores_all = avg_scores(group_expl)
+        else:
+            for cor, group_cor in group_expl.groupby(agg_high):
+                norm_scores_cor = avg_scores(group_cor)
+                insert_scores(norm_scores_all, norm_scores_cor, 'extend')
+
+        #print(norm_scores_all)
+        norm_scores_sampled = equalize_sampling(norm_scores_all)
+        #print(alg, len(norm_scores_sampled[alg]))
+
+        mod.problemdir = mod.fulldir+param_to_str(expt_dict)+'/'
+        if not os.path.exists(mod.problemdir):
+            os.makedirs(mod.problemdir)
+        plot_all_cdfs(norm_scores_sampled, mod)
+
+def plot_bilevel(mod, all_results, enum, agg):
+    grouped_by_expt = all_results.groupby(enum)
+
+    for expt, group_expt in grouped_by_expt:
+        print(expt)
+        ds_title = agg
+        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_expt, ds_title)
+        expt_dict = OrderedDict(zip(enum, list(expt)))
+        mod.problemdir = mod.fulldir+param_to_str(expt_dict)+'/'
+        mod.header = make_header(expt_dict)
+        if not os.path.exists(mod.problemdir):
+            os.makedirs(mod.problemdir)
+        if mod.pair_comp_on is True:
+            plot_all_pair_comp(unnorm_scores, sizes, mod)
+        if mod.cdf_on is True:
+            plot_all_cdfs(norm_scores, mod)
+
+        plot_all_lrs(lrs, mod)
+        plot_all_lambdas(lambdas, mod)
+
+
 def insert_scores(scores_all, scores_new, mode):
     for k, v in scores_new.items():
         if k not in scores_all.keys():
@@ -297,7 +430,7 @@ def insert_scores(scores_all, scores_new, mode):
             scores_all[k] += v
         else:
             scores_all[k].append(v)
-
+'''
 def plot_all_eq(mod, all_results):
     for expl, group_expl in all_results.groupby(['explore_method']):
         norm_scores_all = {}
@@ -319,27 +452,34 @@ def plot_all_eq(mod, all_results):
             insert_scores(norm_scores_all, norm_scores_cor, 'extend')
 
         #print(norm_scores_all)
+        norm_scores_sampled = equalize_sampling(norm_scores_all)
 
-        group_lens = [len(scores) for scores in list(norm_scores_all.values())[0]]
-        sample_size = min(group_lens)
-        sample_mask = []
-        for group_len in group_lens:
-            group_mask = [True for i in range(sample_size)] + [False for i in range(group_len-sample_size)]
-            shuffle(group_mask)
-            sample_mask.append(group_mask)
-
-        norm_scores_sampled = {}
-        for alg, scores in norm_scores_all.items():
-            norm_scores_sampled[alg] = []
-            for group_scores, group_mask in zip(scores, sample_mask):
-                for score, flag in zip(group_scores, group_mask):
-                    if flag:
-                        norm_scores_sampled[alg].append(score)
+        #print(alg, len(norm_scores_sampled[alg]))
 
         mod.problemdir = mod.fulldir+param_to_str(OrderedDict(zip(['explore_method'], [expl])))+'/'
         if not os.path.exists(mod.problemdir):
             os.makedirs(mod.problemdir)
         plot_all_cdfs(norm_scores_sampled, mod)
+'''
+
+def equalize_sampling(norm_scores_all):
+    group_lens = [len(scores) for scores in list(norm_scores_all.values())[0]]
+    sample_size = min(group_lens)
+    sample_mask = []
+    for group_len in group_lens:
+        group_mask = [True for i in range(sample_size)] + [False for i in range(group_len-sample_size)]
+        shuffle(group_mask)
+        sample_mask.append(group_mask)
+
+    norm_scores_sampled = {}
+    for alg, scores in norm_scores_all.items():
+        norm_scores_sampled[alg] = []
+        for group_scores, group_mask in zip(scores, sample_mask):
+            for score, flag in zip(group_scores, group_mask):
+                if flag:
+                    norm_scores_sampled[alg].append(score)
+
+    return norm_scores_sampled
 
 
 def get_scores(results, ds_title):
@@ -428,6 +568,7 @@ def load_cached(mod):
         save_to_hdf(mod)
 
 def filter_results(mod, all_results):
+    print('apply filters..')
     if mod.filter == '1':
         pass
     elif mod.filter == '2':
@@ -459,7 +600,9 @@ def filter_results(mod, all_results):
     elif mod.filter == '12':
         all_results = all_results[all_results['warm_start'] >= 100]
         all_results = all_results[all_results.apply(lambda x: x['corruption'].startswith('st,ctws=3'), axis=1)]
-
+    elif mod.filter == '13':
+        all_results = all_results[all_results['warm_start'] >= 100]
+        all_results = all_results[all_results.apply(lambda x: x['corruption'].startswith('st,ctws=1,cpws=0.0,'), axis=1)]
         #NOTE: the Most-freq and Optimal's warm start value is always zero - this is just a temp fix
         #opt_maj_mask = ((all_results['algorithm'] == 'Optimal') | (all_results['algorithm'] == 'Most-Freq'))
         #opt_maj = all_results[opt_maj_mask]
@@ -468,6 +611,18 @@ def filter_results(mod, all_results):
         #all_results = pd.concat([opt_maj, other])
 
     return all_results
+
+def gen_corr_type(all_results):
+    #all_results['corr_type'] = all_results.apply(lambda row: corr_params(row.corruption)[0][0], axis=1)
+    #all_results['corr_prob'] = all_results.apply(lambda row: corr_params(row.corruption)[0][1], axis=1)
+    all_results['corr_type'] = all_results['corruption'].map(lambda x: corr_params(x)[0][0])
+    all_results['corr_prob'] = all_results['corruption'].map(lambda x: corr_params(x)[0][1])
+
+def corr_params(corr):
+    pat = 'ctws=([0-9]+),cpws=([0-9]+\.[0-9]+)'
+    rgx = re.compile(pat, flags=re.M)
+    matched = rgx.findall(corr)
+    return matched
 
 def propag_sup_only(sup_only, other):
     # propagate the exploration method for Sup-Only
@@ -597,23 +752,25 @@ if __name__ == '__main__':
         load_from_sum(mod)
 
     all_results = mod.all_results
+
     all_results['learning_rate'] = all_results['learning_rate'].astype(float)
     mod.learning_rates = sorted(all_results.learning_rate.unique())
-    #import pdb; pdb.set_trace()
+
 
     #all_results[(all_results['corruption'] == 'st,ctws=1,cpws=0.0,cti=1,cpi=0.0') &(all_results['inter_ws_size_ratio'] == 2.875) & (all_results['dataset'] == 'ds_1038_2.vw.gz')& (all_results['warm_start_multiplier'] == 8) & (all_results['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=8')]
 
     #tuned_results[(tuned_results['corruption'] == 'st,ctws=1,cpws=0.0,cti=1,cpi=0.0') &(tuned_results['inter_ws_size_ratio'] == 2.875) & (tuned_results['dataset'] == 'ds_1038_2.vw.gz')& (tuned_results['warm_start_multiplier'] == 8) & (tuned_results['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=8')]
 
     #all_results['algorithm'] = all_results['algorithm'].astype(str)
-    all_results = all_results[all_results.apply(lambda x: not(x['algorithm'].startswith('On')), axis=1)]
-    all_results = all_results[all_results.apply(lambda x: not(x['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=16'), axis=1)]
+    #all_results = all_results[all_results.apply(lambda x: not(x['algorithm'].startswith('On')), axis=1)]
+    #all_results = all_results[all_results.apply(lambda x: not(x['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=16'), axis=1)]
     #all_results = all_results[all_results['dataset'] == 'ds_vehicle_cs_randcost_54_4.vw.gz']
     #all_results = all_results[all_results['learning_rate'] < 0.004]
     #all_results = avg_folds(all_results)
     tuned_results = tune_lr(all_results)
     propag_results = propagate(tuned_results)
-
+    gen_corr_type(propag_results)
+    #import pdb; pdb.set_trace()
     #all_results = all_results.loc[:, ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm', 'learning_rate', 'avg_error']]
     #all_results = all_results[all_results['corrupt_prob_warm_start'] < 0.6]
     #ignore the choices_lambda = 4 row
@@ -622,8 +779,14 @@ if __name__ == '__main__':
     filt_results = filter_results(mod, propag_results)
 
     if args.agg_mode == 'all':
-        plot_all(mod, filt_results)
+        plot_agg_all(mod, filt_results)
     if args.agg_mode == 'all_eq':
-        plot_all_eq(mod, filt_results)
-    elif args.agg_mode == 'corr':
-        plot_by_corr(mod, filt_results)
+        plot_agg_all_eq(mod, filt_results)
+    elif args.agg_mode == 'no':
+        plot_agg_no(mod, filt_results)
+    elif args.agg_mode == 'agg_corr_prob':
+        plot_agg_corr_prob(mod, filt_results)
+    elif args.agg_mode == 'agg_ratio':
+        plot_agg_ratio(mod, filt_results)
+    elif args.agg_mode == 'agg_ratio_eq':
+        plot_agg_ratio_eq(mod, filt_results)
