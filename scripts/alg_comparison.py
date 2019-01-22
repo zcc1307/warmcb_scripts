@@ -389,26 +389,6 @@ def insert_scores(scores_all, scores_new, mode):
             scores_all[k] += v
         else:
             scores_all[k].append(v)
-'''
-def equalize_sampling(norm_scores_all):
-    group_lens = [len(scores) for scores in list(norm_scores_all.values())[0]]
-    sample_size = min(group_lens)
-    sample_mask = []
-    for group_len in group_lens:
-        group_mask = [True for i in range(sample_size)] + [False for i in range(group_len-sample_size)]
-        shuffle(group_mask)
-        sample_mask.append(group_mask)
-
-    norm_scores_sampled = {}
-    for alg, scores in norm_scores_all.items():
-        norm_scores_sampled[alg] = []
-        for group_scores, group_mask in zip(scores, sample_mask):
-            for score, flag in zip(group_scores, group_mask):
-                if flag:
-                    norm_scores_sampled[alg].append(score)
-
-    return norm_scores_sampled
-'''
 
 def get_scores(results, ds_title):
     norm_scores = None
@@ -620,13 +600,6 @@ def propagate(all_res):
     prop_res = pd.concat([other, prop_opt_maj, prop_sup_only], sort=True)
     return prop_res
 
-'''
-def avg_folds(all_res):
-    #potential problem: last lambda, after averaging, might not make sense
-    #excl = list(filter(lambda item: item != 'fold' and item != 'avg_error', list(all_res)))
-    excl = ['corruption', 'warm_start_multiplier', 'interaction_multiplier', 'explore_method', 'dataset', 'algorithm', 'learning_rate']
-    return all_res.groupby(excl).mean().reset_index()
-'''
 
 def tune_lr(all_res):
     print('tuning learning rates..')
@@ -653,6 +626,8 @@ if __name__ == '__main__':
     parser.add_argument('--normalize_type', type=int, default=1)
     parser.add_argument('--pair_comp', action='store_true')
     parser.add_argument('--agg_mode', default='all')
+
+    #Normalize_type:
     #1: normalized score;
     #2: bandit only centered score;
     #3: raw score
@@ -684,26 +659,9 @@ if __name__ == '__main__':
     all_results['learning_rate'] = all_results['learning_rate'].astype(float)
     mod.learning_rates = sorted(all_results.learning_rate.unique())
 
-
-    #all_results[(all_results['corruption'] == 'st,ctws=1,cpws=0.0,cti=1,cpi=0.0') &(all_results['inter_ws_size_ratio'] == 2.875) & (all_results['dataset'] == 'ds_1038_2.vw.gz')& (all_results['warm_start_multiplier'] == 8) & (all_results['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=8')]
-
-    #tuned_results[(tuned_results['corruption'] == 'st,ctws=1,cpws=0.0,cti=1,cpi=0.0') &(tuned_results['inter_ws_size_ratio'] == 2.875) & (tuned_results['dataset'] == 'ds_1038_2.vw.gz')& (tuned_results['warm_start_multiplier'] == 8) & (tuned_results['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=8')]
-
-    #all_results['algorithm'] = all_results['algorithm'].astype(str)
-    #all_results = all_results[all_results.apply(lambda x: not(x['algorithm'].startswith('On')), axis=1)]
-    #all_results = all_results[all_results.apply(lambda x: not(x['algorithm'] == 'AwesomeBandits,vm=1,wts=1,cl=16'), axis=1)]
-    #all_results = all_results[all_results['dataset'] == 'ds_vehicle_cs_randcost_54_4.vw.gz']
-    #all_results = all_results[all_results['learning_rate'] < 0.004]
-    #all_results = avg_folds(all_results)
     tuned_results = tune_lr(all_results)
     propag_results = propagate(tuned_results)
     gen_corr_type(propag_results)
-    #import pdb; pdb.set_trace()
-    #all_results = all_results.loc[:, ['problem_setting', 'explore_method', 'dataset', 'warm_start', 'algorithm', 'learning_rate', 'avg_error']]
-    #all_results = all_results[all_results['corrupt_prob_warm_start'] < 0.6]
-    #ignore the choices_lambda = 4 row
-    #all_results = all_results[(all_results['choices_lambda'] != 4)]
-    #all_results = all_results[(all_results['choices_lambda'] != 8)]
     filt_results = filter_results(mod, propag_results)
 
     if args.agg_mode == 'all':

@@ -148,25 +148,12 @@ VW_RUN_TMPLT_WARMCB = \
      ('central_lambda',0.5)
 	 ]
 
-#VW_RUN_TMPLT_WARMCB_EPSILON = \
-#	VW_RUN_TMPLT_WARMCB + [('epsilon', 0.05)]
-
-#VW_RUN_TMPLT_WARMCB_EPS_T = \
-#	VW_RUN_TMPLT_WARMCB + [('eps_t', 1.0)]
-
-#VW_PROGRESS_PATTERN = \
-# '\d+\s\d+\.\d+\n' +
-# '\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+.*'
-#float_pat = '\d+\.\d+'
-#int_pat = '\d+'
 foi_pat = '\d+(?:\.\d+)?'
 label_pat = '[a-zA-Z0-9]+'
 gen_pat = '[a-zA-Z0-9\.]+'
 VW_PROGRESS_PATTERN = '('+foi_pat+'\s+'+foi_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\n'+ \
 			'\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+\n)'
 
-#VW_PROGRESS_PATTERN = '(\n'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\n'+ \
-                  #foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+foi_pat+'\s+'+label_pat+'\s+'+label_pat+'\s+'+foi_pat+'\n)'
 
 VW_RESULT_TMPLT = \
 	{

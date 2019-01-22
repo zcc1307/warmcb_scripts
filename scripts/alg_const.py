@@ -213,7 +213,6 @@ def expl_res(expl):
 def ratio_res(ratio):
     return "ratio = {}".format(ratio)
 
-#['corr_type','inter_ws_size_ratio','explore_method']
 def make_header(setting):
     s = ""
     counter = 0

@@ -2,10 +2,8 @@ from vw_commands_const import SIMP_MAP
 import math
 
 def merge_two_dicts(x, y):
-    #print 'x = ', x
-    #print 'y = ', y
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
+    z = x.copy()
+    z.update(y)
     return z
 
 def param_cartesian(param_set_1, param_set_2):
@@ -16,7 +14,6 @@ def param_cartesian(param_set_1, param_set_2):
     return prod
 
 def param_cartesian_multi(param_sets):
-    #print param_sets
     prod = [{}]
     for param_set in param_sets:
         prod = param_cartesian(prod, param_set)
@@ -45,7 +42,6 @@ def get_all_params(mod):
     prm_cor_prob_inter = dictify('corrupt_prob_interaction', mod.choices_cor_prob_inter)
     prm_ws_multiplier = dictify('warm_start_multiplier', mod.ws_multipliers)
     prm_lrs = dictify('learning_rate', mod.learning_rates)
-    # could potentially induce a bug if the maj and best does not have this parameter
     prm_fold = dictify('fold', mod.folds)
     # Algorithm parameters
     prm_cb_type = dictify('cb_type', mod.choices_cb_type)
@@ -57,7 +53,6 @@ def get_all_params(mod):
     prm_loss_enc = dictify(('loss0', 'loss1'), mod.choices_loss_enc)
 
     # Common parameters
-
     # Corruption parameters
     prm_cor = param_cartesian_multi(
     [prm_cor_type_ws,
@@ -81,23 +76,16 @@ def get_all_params(mod):
     prm_com_ws_gt = filter(fltr_ws_gt, prm_com)
     prm_com_inter_gt = filter(fltr_inter_gt, prm_com)
 
+    # Sup-only, Bandit-Only, Sim-Bandit
     prm_baseline = get_params_baseline(mod, prm_com, prm_com_noeps)
+    # AwesomeBandits, MinimaxBandits
     prm_alg = get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd)
+    # Optimal
     prm_opt = get_params_opt(mod)
+    # Majority
     prm_maj = get_params_maj(mod)
 
-    #for p in params_common:
-    #    print p
-    #for p in params_baseline:
-    #    print p
-    #print len(prm_com_ws_gt), len(prm_algs_ws_gt)
-    #print len(prm_com_inter_gt), len(prm_algs_inter_gt)
-    #print len(prm_com)
-    #print len(prm_baseline)
-    #print len(prm_algs)
-    #raw_input('..')
-
-    # Common factor in all 3 groups: dataset
+    # Concatentate dataset names to in all four groups
     prm_all = param_cartesian_multi(
     [prm_dataset,
      prm_baseline + prm_alg + prm_opt + prm_maj])
@@ -114,8 +102,6 @@ def get_all_params(mod):
         prm = extend_prm(prm)
 
     print('The total number of VW commands to run is: ', len(prm_all))
-    #for row in prm_all:
-    #    print(row)
     return prm_all
 
 def get_filters(mod):
@@ -140,9 +126,9 @@ def get_filters(mod):
     return (fltr_inter_gt, fltr_ws_gt)
 
 def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
-    # Algorithm parameters construction
+    # Algorithm (AwesomeBandits, MinimaxBandits) parameters construction
     if mod.algs_on:
-        # Algorithms for supervised validation
+        # Algorithms for supervised ground truth
         if mod.ws_gt_on:
             prm_ws_gt = \
             [
@@ -162,6 +148,7 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
         else:
             prm_ws_gt = [[]]
 
+        # Algorithms for bandit ground truth
         if mod.inter_gt_on:
             prm_inter_gt = \
             [
@@ -172,12 +159,7 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
                      'warm_start_type': 1,
                      'weighting_scheme': 1,
                      'validation_method': 1,
-                     # for time-varying epsilon
-                     #'eps_t':0.1,
-                     'lambda_scheme': 4,
-                     # for fixed epsilon
-                     #'epsilon': 0.05,
-                     #'lambda_scheme': 4
+                     'lambda_scheme': 4
                      }
                  ]
             ]
@@ -193,7 +175,7 @@ def get_params_alg(mod, prm_com_ws_gt, prm_com_inter_gt, prm_choices_lbd):
 
 
 def get_params_opt(mod):
-    # Optimal baselines parameter construction
+    # Optimal (approximating the best policy) parameter construction
     if mod.optimal_on:
         prm_optimal = \
         [
@@ -211,6 +193,7 @@ def get_params_opt(mod):
     return prm_optimal
 
 def get_params_maj(mod):
+    # Majority (predicting the class of the largest proportion) parameter construction
     if mod.majority_on:
         prm_majority = \
         [
@@ -228,6 +211,8 @@ def get_params_maj(mod):
     return prm_majority
 
 
+# Choice of lambdas, when the central value of lambda is 0.5
+# (for testing the effect of using a single lambda)
 def get_cls(num_ls, has_zeroone):
     cls = [0 for _ in range(num_ls)]
     mid = int(num_ls / 2.0)
@@ -246,19 +231,18 @@ def get_cls(num_ls, has_zeroone):
 
 
 def get_params_baseline(mod, prm_com, prm_com_noeps):
-    # Baseline parameters construction
+    # Baseline (Sup-only, Bandit-Only, Sim-Bandit) parameters construction
     if mod.baselines_on:
         prm_sup_only_basic = [[]]
         if mod.sup_only_on:
             prm_sup_only_basic[0] += \
                 [
                     #Sup-Only
-                    #TODO: make sure the epsilon=0 setting propagates
                      {'algorithm':'Sup-Only',
-                     'warm_start_type': 1,
-                     'warm_start_update': True,
-                     'interaction_update': False,
-                     'epsilon': 0.0
+                      'warm_start_type': 1,
+                      'warm_start_update': True,
+                      'interaction_update': False,
+                      'epsilon': 0.0
                      }
                 ]
 
@@ -266,9 +250,9 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
         if mod.band_only_on:
             prm_oth_baseline_basic[0] += \
                 [
-                    #Band-Only
-                      {'algorithm':'Bandit-Only',
-                     'warm_start_type': 1,
+                     #Bandit-Only
+                     {'algorithm':'Bandit-Only',
+                      'warm_start_type': 1,
                       'warm_start_update': False,
                       'interaction_update': True
                      }
@@ -302,15 +286,6 @@ def get_params_baseline(mod, prm_com, prm_com_noeps):
                       }
                      for cl in cls
                  ]
-
-        #Sim-Bandit with only warm-start update
-        #(ideally, we need to set epsilon != 0 for the ws stage and epsilon = 0
-        #for the interaction stage, and it seems that we need to change warm_cb.cc:
-        #if interaction_update = False then we should use csoaa predict for interaction stage
-        #{'algorithm':'Sim-Bandit-Freeze',
-        #'warm_start_type': 2,
-        # 'warm_start_update': True,
-        # 'interaction_update': False}
 
         prm_baseline_const = \
         [

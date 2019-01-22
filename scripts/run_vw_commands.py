@@ -27,40 +27,28 @@ class model:
         self.ws_gt_on = False
         self.inter_gt_on = True
 
-        #self.num_checkpoints = 400
         self.num_checkpoints = 200
 
         # use fractions instead of absolute numbers
-        #self.ws_multipliers = [pow(2,i) for i in range(4)]
         self.ws_multipliers = [pow(2,i) for i in range(4)]
 
         self.choices_cb_type = ['mtr']
         self.choices_choices_lambda = [2,8]
-        #self.choices_choices_lambda = [2,8,16]
 
-        #self.choices_cor_type_ws = [1,2,3]
-        #self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
         self.choices_cor_type_ws = [1,2,3]
         self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
 
         self.choices_cor_type_inter = [1]
         self.choices_cor_prob_inter = [0.0]
-        #self.choices_cor_prob_inter = [0.0, 0.125, 0.25, 0.5]
-
-        self.choices_loss_enc = [(0, 1)]
         #self.choices_cor_type_inter = [1,2]
         #self.choices_cor_prob_inter = [0.0,0.5]
 
-        #self.choices_epsilon = [0.05]
+        self.choices_loss_enc = [(0, 1)]
         self.choices_epsilon = [0.00625, 0.0125, 0.025, 0.05, 0.1]
         self.choices_eps_t = []
-        #, 1.0
-        #self.choices_epsilon = [0.0125, 0.025, 0.05, 0.1]
-        #self.epsilon_on = True
-        #self.lr_template = [0.1, 0.03, 0.3, 0.01, 1.0, 0.003, 3.0, 0.001, 10.0, 0.0003, 30.0, 0.0001, 100.0]
+
         self.choices_adf = [True]
         self.cs_on = False
-        #self.critical_size_ratios = [368 * pow(2, -i) for i in range(8) ]
         self.critical_size_ratios = [184 * pow(2, -i) for i in range(7) ]
 
 def gen_lr(n):
@@ -77,11 +65,10 @@ def gen_lr(n):
 def analyze_vw_out_maj_opt(mod):
     vw_result = VW_RESULT_TMPLT.copy()
     if mod.param['algorithm'] == 'Optimal':
-        # this condition is for computing the optimal error
+        # Computing the optimal error
         vw_result['avg_error'] = avg_error(mod)
     else:
-        # this condition is for computing the majority error
-        #err =  1 - float(mod.param['majority_size']) / mod.param['total_size']
+        # Computing the majority error
         if mod.param['cs_on'] is True:
             err = get_maj_error_cs(mod.param['data'])
         else:
@@ -91,7 +78,6 @@ def analyze_vw_out_maj_opt(mod):
 
 def extract_vw_output(vw_filename):
     results = []
-
     f = open(vw_filename, 'r')
     vw_output_text = f.read()
     rgx = re.compile(VW_PROGRESS_PATTERN, flags=re.M)
@@ -109,7 +95,6 @@ def extract_vw_output(vw_filename):
 
 def analyze_vw_out(mod):
     vw_run_results = []
-
     if mod.param['algorithm'] == 'Most-Freq' or mod.param['algorithm'] == 'Optimal':
         vw_run_results.append(analyze_vw_out_maj_opt(mod))
         return vw_run_results
@@ -137,7 +122,7 @@ def analyze_vw_out(mod):
 
 
 def gen_vw_command(mod):
-    mod.vw_options = format_setting(mod.vw_template, mod.param)
+    mod.vw_options = format_setting(mod.vw_run_tmplt, mod.param)
     vw_options_list = []
     for k, v in mod.vw_options.items():
         vw_options_list.append('--'+str(k))
@@ -147,26 +132,26 @@ def gen_vw_command(mod):
 
 def gen_vw_options(mod):
     if mod.param['algorithm'] == 'Optimal':
-        # Fully supervised on full dataset
-        mod.vw_template = OrderedDict(VW_RUN_TMPLT_OPT)
+        # Cost-sensitive one-versus-all learning on full dataset
+        mod.vw_run_tmplt = OrderedDict(VW_RUN_TMPLT_OPT)
         mod.param['passes'] = 5
         mod.param['cache_file'] = mod.param['data'] + '.cache'
         if mod.param['cs_on'] is True:
             mod.param['csoaa'] = mod.param['num_classes']
-            mod.vw_template['csoaa'] = mod.param['num_classes']
+            mod.vw_run_tmplt['csoaa'] = mod.param['num_classes']
         else:
             mod.param['oaa'] = mod.param['num_classes']
-            mod.vw_template['oaa'] = mod.param['num_classes']
+            mod.vw_run_tmplt['oaa'] = mod.param['num_classes']
 
     elif mod.param['algorithm'] == 'Most-Freq':
-        # Compute majority error; basically we would like to skip vw running as fast as possible
-        mod.vw_template = OrderedDict(VW_RUN_TMPLT_MAJ)
+        # Skip vw running
+        mod.vw_run_tmplt = OrderedDict(VW_RUN_TMPLT_MAJ)
         mod.param['warm_cb'] = mod.param['num_classes']
         mod.param['warm_start'] = 0
         mod.param['interaction'] = 0
     else:
-        # General CB
-        mod.vw_template = OrderedDict(VW_RUN_TMPLT_WARMCB)
+        # Contextual bandits simulation
+        mod.vw_run_tmplt = OrderedDict(VW_RUN_TMPLT_WARMCB)
         mod.param['warm_start'] = mod.param['warm_start_multiplier'] * mod.param['grid_size']
         mod.param['interaction'] = mod.param['total_size'] - mod.param['warm_start']
         mod.param['warm_cb'] = mod.param['num_classes']
@@ -174,22 +159,22 @@ def gen_vw_options(mod):
 
         if mod.param['adf_on'] is True:
             mod.param['cb_explore_adf'] = ' '
-            mod.vw_template['cb_explore_adf'] = ' '
+            mod.vw_run_tmplt['cb_explore_adf'] = ' '
         else:
             mod.param['cb_explore'] = mod.param['num_classes']
-            mod.vw_template['cb_explore'] = 0
+            mod.vw_run_tmplt['cb_explore'] = 0
 
         if 'eps_t' in mod.param:
-            mod.vw_template['eps_t'] = 1.0
+            mod.vw_run_tmplt['eps_t'] = 1.0
             if mod.param['algorithm'].startswith('AwesomeBandits'):
-                #mod.vw_template['t_0'] = mod.param['warm_start']
-                mod.vw_template['t_0'] = 0
+                #mod.vw_run_tmplt['t_0'] = mod.param['warm_start']
+                mod.vw_run_tmplt['t_0'] = 0
         else:
-            mod.vw_template['epsilon'] = 0.0
+            mod.vw_run_tmplt['epsilon'] = 0.0
 
         if mod.param['cs_on'] is True:
             mod.param['warm_cb_cs'] = ' '
-            mod.vw_template['warm_cb_cs'] = ' '
+            mod.vw_run_tmplt['warm_cb_cs'] = ' '
 
 
 def execute_vw(mod):
@@ -223,7 +208,7 @@ def replace_keys(dic, simplified_keymap):
     return dic_new
 
 def get_vw_out_filename(mod):
-    # step 1: use the above as a template to filter out irrelevant parameters
+    # step 1: fill in vw output template
     param_formatted = format_setting(mod.vw_out_tmplt, mod.param)
     # step 2: replace the key names with the simplified names
     param_simplified = replace_keys(param_formatted, mod.simp_map)
@@ -233,7 +218,7 @@ def run_single_expt(mod):
     mod.param['data'] = mod.ds_path + str(mod.param['fold']) + '/' + mod.param['dataset']
     mod.param['total_size'] = get_num_lines(mod.param['data'])
     mod.param['num_classes'] = get_num_classes(mod.param['data'])
-    #mod.param['majority_size'],
+
     if mod.param['cs_on'] is False:
         mod.param['majority_class'] = get_maj_class_mc(mod.param['data'])
 
@@ -241,7 +226,7 @@ def run_single_expt(mod):
     mod.param['progress'] = mod.param['grid_size']
     mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
     mod.vw_output_filename = mod.vw_output_dir + get_vw_out_filename(mod) + '.txt'
-    #mod.param['dataset'] = remove_suffix(mod.param['data'])
+
     mod.param['vw_output_name'] = mod.vw_output_filename
 
     execute_vw(mod)
@@ -254,7 +239,7 @@ def run_single_expt(mod):
     if mod.remove_vw_out:
         os.remove(mod.vw_output_filename)
 
-# The following function is a "template filling" function
+# Template filling
 # Given a template, we use the setting dict to fill it as much as possible
 def format_setting(template, setting):
     formatted = template.copy()
@@ -280,7 +265,6 @@ def ds_files(ds_path):
     prevdir = os.getcwd()
     os.chdir(ds_path)
     dss = sorted(glob.glob('*.vw.gz'))
-    #dss = [ds_path+ds for ds in dss]
     os.chdir(prevdir)
     return dss
 
@@ -295,16 +279,6 @@ def get_num_lines(dataset_name):
     num_lines = subprocess.check_output(('zcat ' + dataset_name + ' | wc -l'), shell=True)
     return int(num_lines)
 
-def get_num_classes(ds):
-    # could be a bug for including the prefix..
-    metadata_list = os.path.basename(ds).split('.')[0].split('_')[1:]
-    return int(metadata_list[-1])
-
-#def get_majority_class(dataset_name):
-#    maj_class_str = subprocess.check_output(('zcat '+ dataset_name +' | cut -d \' \' -f 1 | sort | uniq -c | sort -r -n | head -1 | xargs '), shell=True)
-#    maj_size, maj_class = maj_class_str.split()
-#    return int(maj_size), int(maj_class)
-
 def get_class_count(dataset_name):
     count_label = {}
     f = gzip.open(dataset_name, 'r')
@@ -315,6 +289,10 @@ def get_class_count(dataset_name):
             count_label[label] = 0
         count_label[label] += 1
     return count_label
+
+def get_num_classes(dataset_name):
+    count_label = get_class_count(dataset_name)
+    return len(count_label)
 
 def get_maj_class_mc(dataset_name):
     count_label = get_class_count(dataset_name)
@@ -350,12 +328,9 @@ def ideal_var(mod):
     return vw_output_extract(mod, 'Ideal average variance')
 
 def vw_output_extract(mod, pattern):
-    #print mod.vw_output_filename
     vw_output = open(mod.vw_output_filename, 'r')
     vw_output_text = vw_output.read()
-    #print vw_output_text
-    #rgx_pattern = '^'+pattern+' = (.*)(|\sh)\n.*$'
-    #print rgx_pattern
+
     rgx_pattern = '.*'+pattern+' = ([\d]*.[\d]*)( h|)\n.*'
     rgx = re.compile(rgx_pattern, flags=re.M)
 
@@ -363,7 +338,6 @@ def vw_output_extract(mod, pattern):
     if not errs:
         avge = 0
     else:
-        #print errs
         avge = float(errs[0][0])
 
     vw_output.close()
@@ -411,8 +385,9 @@ if __name__ == '__main__':
     mod.remove_vw_out = (args.remove_vw_out != 0)
 
     print('reading dataset files..')
-    #TODO: this line specifically for multiple folds
-    #Need a systematic way to detect subfolder names
+    #This line handles multiple folds, where we assume that
+    #folder 1/ includes all dataset files, and subsequent folders
+    #includes the same set of filenames with different shufflings
     mod.dss = ds_files(mod.ds_path + '1/')
 
     print(len(mod.dss))
@@ -422,51 +397,35 @@ if __name__ == '__main__':
     else:
         mod.dss = mod.dss[:args.num_datasets]
 
-    #print mod.dss
-
     if args.task_id == 0:
-        # Compile vw in one of the subfolders
-        #process = subprocess.Popen('make -C .. clean; make -C ..', shell=True, stdout=f, stderr=f)
-        #subprocess.check_call(cmd, shell=True)
-        #process.wait()
-
-        # To avoid race condition of writing to the same file at the same time
+        # To avoid race condition, use subtask 0 to create all folders
         create_dir(args.results_dir)
 
-        # This is specifically designed for teamscratch, as accessing a folder
-        # with a huge number of result files can be super slow. Hence, we create a
-        # subfolder for each dataset to alleviate this.
+        # Create a subfolder for each dataset for storing the VW outputs.
         for ds in mod.dss:
             ds_no_suffix = remove_suffix(ds)
             create_dir(args.results_dir + ds_no_suffix + '/')
 
+        # Create a flag directory to mark the success of creating all folders.
         create_dir(flag_dir)
     else:
-        # may still have the potential of race condition on those subfolders (if
-        # we have a lot of datasets to run and the datasets are small)
         while not os.path.exists(flag_dir):
             time.sleep(1)
 
     if args.num_learning_rates <= 0:
-        #mod.learning_rates = [gen_lr(0)]
         mod.learning_rates = [0.5]
     else:
         mod.learning_rates = [gen_lr(i) for i in range(args.num_learning_rates)]
-    #mod.folds = range(1,11)
+
     mod.folds = range(1, args.num_folds+1)
 
-    #mod.dss = ["ds_223_63.vw.gz"]
-    #mod.dss = mod.dss[:5]
-
     print('generating tasks..')
-    # here, we are generating the task specific parameter settings
-    # by first generate all parameter setting and pick every num_tasks of them
+    # Task-specific parameter settings (for running the tasks in parallel)
+    # First generate all parameter settings
+    # Then pick every num_tasks of them
     all_params = get_all_params(mod)
     mod.config_task = get_params_task(all_params)
     print('task ', str(mod.task_id), ' of ', str(mod.num_tasks), ':')
     print(len(mod.config_task))
 
-    #print mod.ds_task
-    # we only need to vary the warm start fraction, and there is no need to vary the bandit fraction,
-    # as each run of vw automatically accumulates the bandit dataset
     main_loop(mod)
