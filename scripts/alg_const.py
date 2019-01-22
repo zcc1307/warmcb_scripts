@@ -26,7 +26,7 @@ ALG_NAMES_SUM = \
     ]
 
 ALG_NAMES_LATEX = \
-    ['Most-Freq',
+    ['Majority',
     'Sim-Bandit',
     'Class-1',
     'Bandit-Only',
@@ -48,7 +48,7 @@ ALG_NAMES_LATEX = \
     'unknown']
 
 ALG_NAMES_COMPATIBLE = \
-    ['Most-Freq',
+    ['Majority',
     'Sim-Bandit',
     'Class-1',
     'Bandit-Only',
@@ -72,14 +72,14 @@ ALG_NAMES_COMPATIBLE = \
 palette = sns.color_palette('colorblind')
 colors = palette.as_hex()
 #['black', 'magenta', 'lime', 'green', 'blue', 'darkorange','darksalmon', 'red', 'cyan']
-colors[1],
+
 ALG_COLORS = \
     [
     colors[5],
     colors[3],
     'black',
     colors[0],
-    'black',
+    colors[1],
     'black',
     colors[2],
     colors[2],

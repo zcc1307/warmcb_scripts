@@ -108,18 +108,28 @@ def save_legend(mod, indices):
 #def problem_str(name_problem):
 #    return name_problem[0] + '_' + name_problem[1]
 
-def plot_cdf(alg_name, errs):
+def plot_cdf(alg_name, errs, iw):
     col, sty = alg_color_style(alg_name)
-    plt.step(np.sort(errs), np.linspace(0, 1, len(errs), endpoint=False), label=alg_str(alg_name), color=col, linestyle=sty, linewidth=2.0)
 
-def plot_all_cdfs(alg_results, mod):
+    idx = np.argsort(errs)
+    num_errs = len(errs)
+    sorted_errs = [errs[idx[i]] for i in range(num_errs)]
+    sorted_iw = [iw[idx[i]] for i in range(num_errs)]
+
+    plt.step(sorted_errs, np.cumsum(sorted_iw), label=alg_str(alg_name), color=col, linestyle=sty, linewidth=2.0)
+
+def plot_all_cdfs(alg_results, mod, iw=None):
     print('printing cdfs..')
     indices = []
     pylab.figure(figsize=(8,6))
 
+    if iw is None:
+        num_errs = len(list(alg_results.values())[0])
+        iw = [ 1.0 / num_errs for _ in range(num_errs) ]
+
     for alg_name, errs in alg_results.items():
         indices.append(alg_index(alg_name))
-        plot_cdf(alg_name, errs)
+        plot_cdf(alg_name, errs, iw)
 
     if mod.normalize_type == 1:
         plt.xlim(0,1)
@@ -129,6 +139,7 @@ def plot_all_cdfs(alg_results, mod):
         plt.xlim(0, 1)
 
     plt.ylim(0,1)
+    plt.grid(True, linestyle='--')
     #params={'legend.fontsize':26,
     #'axes.labelsize': 24, 'axes.titlesize':26, 'xtick.labelsize':20,
     #'ytick.labelsize':20 }
@@ -146,6 +157,10 @@ def plot_all_cdfs(alg_results, mod):
     plt.savefig(mod.problemdir+'cdf.pdf')
     ax.legend_.remove()
     plt.savefig(mod.problemdir+'cdf_nolegend.pdf')
+    plt.title('')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.savefig(mod.problemdir+'cdf_notitle.pdf')
     save_legend(mod, indices)
     plt.close()
 
@@ -251,13 +266,19 @@ def plot_agg_ratio(mod, all_results):
     return plot_bilevel(mod, all_results, ['corruption','explore_method'], ['inter_ws_size_ratio', 'dataset', 'warm_start_multiplier'])
 
 def plot_agg_ratio_eq(mod, all_results):
-    return plot_eq(mod, all_results, ['corruption', 'explore_method'], [])
+    return plot_eq_iw(mod, all_results, ['corruption','explore_method'], ['dataset', 'warm_start_multiplier'])
+
+#def plot_agg_ratio_eq(mod, all_results):
+#    return plot_eq(mod, all_results, ['corruption', 'explore_method'], [])
 
 def plot_agg_all(mod, all_results):
     return plot_bilevel(mod, all_results, ['explore_method'], ['corruption','inter_ws_size_ratio', 'dataset','warm_start_multiplier'])
 
 def plot_agg_all_eq(mod, all_results):
-    return plot_eq(mod, all_results, ['explore_method'], ['corruption'])
+    return plot_eq_iw(mod, all_results, ['explore_method'], ['corruption', 'dataset', 'warm_start_multiplier'])
+
+#def plot_agg_all_eq(mod, all_results):
+#    return plot_eq(mod, all_results, ['explore_method'], ['corruption'])
 
 def plot_agg_corr_prob(mod, all_results):
     return plot_bilevel(mod, all_results, ['corr_type','inter_ws_size_ratio','explore_method'],  ['corr_prob', 'dataset', 'warm_start_multiplier'])
@@ -265,6 +286,7 @@ def plot_agg_corr_prob(mod, all_results):
 def plot_agg_no(mod, all_results):
     return plot_bilevel(mod, all_results, ['corruption','inter_ws_size_ratio','explore_method'], ['dataset','warm_start_multiplier'])
 
+'''
 def avg_scores(group_cor):
     norm_scores_cor = {}
     for ratio, group_ratio in group_cor.groupby(['inter_ws_size_ratio']):
@@ -280,7 +302,36 @@ def avg_scores(group_cor):
         for k, v in norm_scores_ratio.items():
             print(k, len(v))
     return norm_scores_cor
+'''
 
+def plot_eq_iw(mod, all_results, enum, agg):
+    for expl, group_expl in all_results.groupby(enum):
+        norm_scores_all = {}
+        ratio_lens = []
+
+        if len(enum) == 1:
+           expt_dict = OrderedDict(zip(enum, [expl]))
+        else:
+           expt_dict = OrderedDict(zip(enum, list(expl)))
+
+        mod.header = make_header(expt_dict)
+
+        for ratio, group_ratio in group_expl.groupby(['inter_ws_size_ratio']):
+           unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_ratio, agg)
+           ratio_lens.append(len(list(norm_scores.values())[0]))
+           insert_scores(norm_scores_all, norm_scores, 'extend')
+
+        num_ratios = len(ratio_lens)
+        iw = []
+        for i in range(num_ratios):
+            iw += [ 1.0 / (ratio_lens[i] * num_ratios) for _ in range(ratio_lens[i]) ]
+
+        mod.problemdir = mod.fulldir+param_to_str(expt_dict)+'/'
+        if not os.path.exists(mod.problemdir):
+            os.makedirs(mod.problemdir)
+        plot_all_cdfs(norm_scores_all, mod, iw)
+
+'''
 def plot_eq(mod, all_results, enum, agg_high):
     for expl, group_expl in all_results.groupby(enum):
         norm_scores_all = {}
@@ -307,14 +358,14 @@ def plot_eq(mod, all_results, enum, agg_high):
         if not os.path.exists(mod.problemdir):
             os.makedirs(mod.problemdir)
         plot_all_cdfs(norm_scores_sampled, mod)
+'''
 
 def plot_bilevel(mod, all_results, enum, agg):
     grouped_by_expt = all_results.groupby(enum)
 
     for expt, group_expt in grouped_by_expt:
         print(expt)
-        ds_title = agg
-        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_expt, ds_title)
+        unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_expt, agg)
         expt_dict = OrderedDict(zip(enum, list(expt)))
         mod.problemdir = mod.fulldir+param_to_str(expt_dict)+'/'
         mod.header = make_header(expt_dict)
@@ -338,7 +389,7 @@ def insert_scores(scores_all, scores_new, mode):
             scores_all[k] += v
         else:
             scores_all[k].append(v)
-
+'''
 def equalize_sampling(norm_scores_all):
     group_lens = [len(scores) for scores in list(norm_scores_all.values())[0]]
     sample_size = min(group_lens)
@@ -357,7 +408,7 @@ def equalize_sampling(norm_scores_all):
                     norm_scores_sampled[alg].append(score)
 
     return norm_scores_sampled
-
+'''
 
 def get_scores(results, ds_title):
     norm_scores = None
