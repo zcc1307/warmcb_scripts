@@ -1,5 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as plt
 import pylab
 import os
@@ -366,7 +368,11 @@ def plot_bilevel(mod, all_results, enum, agg):
     for expt, group_expt in grouped_by_expt:
         print(expt)
         unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_expt, agg)
-        expt_dict = OrderedDict(zip(enum, list(expt)))
+
+        if len(enum) == 1:
+            expt_dict = OrderedDict(zip(enum, [expt]))
+        else:
+            expt_dict = OrderedDict(zip(enum, list(expt)))
         mod.problemdir = mod.fulldir+param_to_str(expt_dict)+'/'
         mod.header = make_header(expt_dict)
         if not os.path.exists(mod.problemdir):
@@ -434,6 +440,11 @@ def get_scores(results, ds_title):
         update_result_dict(lrs, new_lr)
         update_result_dict(lambdas, new_lambda)
         sizes.append(new_size)
+
+
+    #Added for presentation purposes:
+    #norm_scores.pop('Most-Freq', None)
+    #norm_scores.pop('AwesomeBandits,vm=1,wts=1,cl=2', None)
 
     #print(name_ds)
     #print(unnorm_scores)

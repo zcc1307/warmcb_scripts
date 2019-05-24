@@ -35,8 +35,10 @@ class model:
         self.choices_cb_type = ['mtr']
         self.choices_choices_lambda = [2,8]
 
-        self.choices_cor_type_ws = [1,2,3]
-        self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
+        #self.choices_cor_type_ws = [1,2,3]
+        #self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
+        self.choices_cor_type_ws = [1]
+        self.choices_cor_prob_ws = [0.0]
 
         self.choices_cor_type_inter = [1]
         self.choices_cor_prob_inter = [0.0]
@@ -44,7 +46,8 @@ class model:
         #self.choices_cor_prob_inter = [0.0,0.5]
 
         self.choices_loss_enc = [(0, 1)]
-        self.choices_epsilon = [0.00625, 0.0125, 0.025, 0.05, 0.1]
+        self.choices_epsilon = [0.05]
+        #self.choices_epsilon = [0.00625, 0.0125, 0.025, 0.05, 0.1]
         self.choices_eps_t = []
 
         self.choices_adf = [True]
@@ -231,6 +234,7 @@ def run_single_expt(mod):
 
     execute_vw(mod)
     vw_run_results = analyze_vw_out(mod)
+
     for vw_result in vw_run_results:
         result_combined = merge_two_dicts(mod.param, vw_result)
         result_formatted = format_setting(mod.sum_tmplt, result_combined)
