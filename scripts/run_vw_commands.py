@@ -7,9 +7,13 @@ import time
 import glob
 import re
 from collections import OrderedDict
-from params_gen import get_all_params, merge_two_dicts
-from vw_commands_const import VW_RUN_TMPLT_OPT, VW_RUN_TMPLT_MAJ, VW_RUN_TMPLT_WARMCB, VW_PROGRESS_PATTERN, VW_RESULT_TMPLT, FULL_TMPLT, SIMP_MAP, SUM_TMPLT, VW_OUT_TMPLT
+from params_gen import get_all_params
+from vw_commands_const import VW_RUN_TMPLT_OPT, VW_RUN_TMPLT_MAJ, VW_RUN_TMPLT_WARMCB, \
+  VW_PROGRESS_PATTERN, VW_RESULT_TMPLT, FULL_TMPLT, SIMP_MAP, SUM_TMPLT, VW_OUT_TMPLT
+from utils import intersperse, format_setting, replace_keys, merge_dicts
 import gzip
+import random
+from parse_res import write_row, write_result, analyze_vw_out
 
 class model:
     def __init__(self):
@@ -24,8 +28,8 @@ class model:
         self.optimal_on = True
         self.majority_on = True
 
-        self.ws_gt_on = False
-        self.inter_gt_on = True
+        #self.ws_gt_on = False
+        #self.inter_gt_on = True
 
         self.num_checkpoints = 200
 
@@ -37,8 +41,10 @@ class model:
 
         #self.choices_cor_type_ws = [1,2,3]
         #self.choices_cor_prob_ws = [0.0,0.25,0.5,1.0]
-        self.choices_cor_type_ws = [1]
-        self.choices_cor_prob_ws = [0.0]
+        self.choices_cor_type_ws = [1,2]
+        self.choices_cor_prob_ws = [0.0,0.25]
+        #self.choices_cor_type_ws = [1]
+        #self.choices_cor_prob_ws = [0.0]
 
         self.choices_cor_type_inter = [1]
         self.choices_cor_prob_inter = [0.0]
@@ -46,12 +52,12 @@ class model:
         #self.choices_cor_prob_inter = [0.0,0.5]
 
         self.choices_loss_enc = [(0, 1)]
-        self.choices_epsilon = [0.05]
+        #self.choices_epsilon = [0.05]
+        self.choices_epsilon = [0.00625, 0.0125]
         #self.choices_epsilon = [0.00625, 0.0125, 0.025, 0.05, 0.1]
         self.choices_eps_t = []
 
         self.choices_adf = [True]
-        self.cs_on = False
         self.critical_size_ratios = [184 * pow(2, -i) for i in range(7) ]
 
 def gen_lr(n):
@@ -65,64 +71,13 @@ def gen_lr(n):
     if n % 4 == 3:
         return 0.01 * pow(10, -m)
 
-def analyze_vw_out_maj_opt(mod):
-    vw_result = VW_RESULT_TMPLT.copy()
-    if mod.param['algorithm'] == 'Optimal':
-        # Computing the optimal error
-        vw_result['avg_error'] = avg_error(mod)
+def gen_lrs(num_lrs):
+    if num_lrs <= 0:
+        lrs = [0.5]
     else:
-        # Computing the majority error
-        if mod.param['cs_on'] is True:
-            err = get_maj_error_cs(mod.param['data'])
-        else:
-            err = get_maj_error_mc(mod.param['data'])
-        vw_result['avg_error'] = float('%0.5f' % err)
-    return vw_result
+        lrs = [gen_lr(i) for i in range(num_lrs)]
 
-def extract_vw_output(vw_filename):
-    results = []
-    f = open(vw_filename, 'r')
-    vw_output_text = f.read()
-    rgx = re.compile(VW_PROGRESS_PATTERN, flags=re.M)
-    matched = rgx.findall(vw_output_text)
-
-    for mat in matched:
-        line = mat
-        s = line.split()
-        if len(s) >= 12:
-            print('warning: parsing vw file encountered unexpected output. The line is: ', line)
-            s = s[:11]
-        results.append(s)
-    f.close()
-    return results
-
-def analyze_vw_out(mod):
-    vw_run_results = []
-    if mod.param['algorithm'] == 'Most-Freq' or mod.param['algorithm'] == 'Optimal':
-        vw_run_results.append(analyze_vw_out_maj_opt(mod))
-        return vw_run_results
-
-    vw_results = extract_vw_output(mod.vw_output_filename)
-
-    for s in vw_results:
-        counter_new, last_lambda, actual_var, ideal_var, \
-        avg_loss, last_loss, counter, weight, curr_label, curr_pred, curr_feat = s
-        inter_effective = int(float(weight))
-
-        for ratio in mod.critical_size_ratios:
-            if inter_effective >= (1 - 1e-7) * mod.param['warm_start'] * ratio and \
-            inter_effective <= (1 + 1e-7) * mod.param['warm_start'] * ratio:
-                vw_result = VW_RESULT_TMPLT.copy()
-                vw_result['interaction'] = inter_effective
-                vw_result['inter_ws_size_ratio'] = ratio
-                vw_result['interaction_multiplier'] = mod.param['warm_start_multiplier'] * ratio
-                vw_result['avg_error'] = float(avg_loss)
-                vw_result['actual_variance'] = float(actual_var)
-                vw_result['ideal_variance'] = float(ideal_var)
-                vw_result['last_lambda'] = float(last_lambda)
-                vw_run_results.append(vw_result)
-    return vw_run_results
-
+    return lrs
 
 def gen_vw_command(mod):
     mod.vw_options = format_setting(mod.vw_run_tmplt, mod.param)
@@ -139,19 +94,11 @@ def gen_vw_options(mod):
         mod.vw_run_tmplt = OrderedDict(VW_RUN_TMPLT_OPT)
         mod.param['passes'] = 5
         mod.param['cache_file'] = mod.param['data'] + '.cache'
-        if mod.param['cs_on'] is True:
-            mod.param['csoaa'] = mod.param['num_classes']
-            mod.vw_run_tmplt['csoaa'] = mod.param['num_classes']
-        else:
-            mod.param['oaa'] = mod.param['num_classes']
-            mod.vw_run_tmplt['oaa'] = mod.param['num_classes']
+        mod.param['oaa'] = mod.param['num_classes']
 
     elif mod.param['algorithm'] == 'Most-Freq':
         # Skip vw running
-        mod.vw_run_tmplt = OrderedDict(VW_RUN_TMPLT_MAJ)
-        mod.param['warm_cb'] = mod.param['num_classes']
-        mod.param['warm_start'] = 0
-        mod.param['interaction'] = 0
+        pass
     else:
         # Contextual bandits simulation
         mod.vw_run_tmplt = OrderedDict(VW_RUN_TMPLT_WARMCB)
@@ -167,48 +114,42 @@ def gen_vw_options(mod):
             mod.param['cb_explore'] = mod.param['num_classes']
             mod.vw_run_tmplt['cb_explore'] = 0
 
-        if 'eps_t' in mod.param:
-            mod.vw_run_tmplt['eps_t'] = 1.0
-            if mod.param['algorithm'].startswith('AwesomeBandits'):
-                #mod.vw_run_tmplt['t_0'] = mod.param['warm_start']
-                mod.vw_run_tmplt['t_0'] = 0
-        else:
-            mod.vw_run_tmplt['epsilon'] = 0.0
+        if 'sim_bandit' in mod.param.keys():
+            mod.param['sim_bandit'] = ' '
+            mod.vw_run_tmplt['sim_bandit'] = ' '
 
-        if mod.param['cs_on'] is True:
-            mod.param['warm_cb_cs'] = ' '
-            mod.vw_run_tmplt['warm_cb_cs'] = ' '
+        if mod.param['warm_start_update'] is True:
+            mod.param['warm_start_update'] = ' '
+            mod.vw_run_tmplt['warm_start_update'] = ' '
 
+        if mod.param['interaction_update'] is True:
+            mod.param['interaction_update'] = ' '
+            mod.vw_run_tmplt['interaction_update'] = ' '
 
 def execute_vw(mod):
-    gen_vw_options(mod)
-    cmd = gen_vw_command(mod)
-    print(mod.param['algorithm'])
-    print(cmd, '\n')
-    f = open(mod.vw_output_filename, 'w')
-    f.write(cmd+'\n')
-    f.close()
-    f = open(mod.vw_output_filename, 'a')
-    process = subprocess.Popen(cmd, shell=True, stdout=f, stderr=f)
-    process.wait()
-    f.close()
+    print('writing to:', mod.vw_output_filename)
 
-def intersperse(l, ch):
-    s = ''
-    for item in l:
-        s += str(item)
-        s += ch
-    return s
+    if mod.param['algorithm'] == 'Most-Freq':
+        maj_err = get_maj_error_mc(mod.param['data'])
+        f = open(mod.vw_output_filename, 'w')
+        f.write('average loss = '+str(maj_err)+'\n')
+        f.close()
+    else:
+        gen_vw_options(mod)
+        cmd = gen_vw_command(mod)
+        print(mod.param['algorithm'])
+        print(cmd, '\n')
+        f = open(mod.vw_output_filename, 'w')
+        f.write(cmd+'\n')
+        f.close()
+        f = open(mod.vw_output_filename, 'a')
+        process = subprocess.Popen(cmd, shell=True, stdout=f, stderr=f)
+        process.wait()
+        f.close()
 
 def param_to_str(param):
     param_list = [ str(k)+'={'+str(v) +'}' for k,v in param.items() ]
     return intersperse(param_list, ',')
-
-def replace_keys(dic, simplified_keymap):
-    dic_new = OrderedDict()
-    for k, v in dic.items():
-        dic_new[simplified_keymap[k]] = v
-    return dic_new
 
 def get_vw_out_filename(mod):
     # step 1: fill in vw output template
@@ -221,55 +162,40 @@ def run_single_expt(mod):
     mod.param['data'] = mod.ds_path + str(mod.param['fold']) + '/' + mod.param['dataset']
     mod.param['total_size'] = get_num_lines(mod.param['data'])
     mod.param['num_classes'] = get_num_classes(mod.param['data'])
-
-    if mod.param['cs_on'] is False:
-        mod.param['majority_class'] = get_maj_class_mc(mod.param['data'])
+    mod.param['majority_class'] = get_maj_class_mc(mod.param['data'])
 
     mod.param['grid_size'] = int(math.ceil(float(mod.param['total_size']) / float(mod.num_checkpoints)))
     mod.param['progress'] = mod.param['grid_size']
-    mod.vw_output_dir = mod.results_path + remove_suffix(mod.param['data']) + '/'
+    mod.vw_output_dir = mod.results_path + rm_suffix(mod.param['data']) + '/'
     mod.vw_output_filename = mod.vw_output_dir + get_vw_out_filename(mod) + '.txt'
 
     mod.param['vw_output_name'] = mod.vw_output_filename
 
     execute_vw(mod)
-    vw_run_results = analyze_vw_out(mod)
 
-    for vw_result in vw_run_results:
-        result_combined = merge_two_dicts(mod.param, vw_result)
-        result_formatted = format_setting(mod.sum_tmplt, result_combined)
-        write_result(mod, result_formatted)
+    #if mod.remove_vw_out:
+    #    os.remove(mod.vw_output_filename)
 
-    if mod.remove_vw_out:
-        os.remove(mod.vw_output_filename)
+def shuffle(ds_name, dir, fold):
+    f = gzip.open(dir + '/' + ds_name, 'r')
+    data = [(random.random(), line) for line in f]
+    data.sort()
 
-# Template filling
-# Given a template, we use the setting dict to fill it as much as possible
-def format_setting(template, setting):
-    formatted = template.copy()
-    for k, v in setting.items():
-        if k in template.keys():
-            formatted[k] = v
-    return formatted
+    f_shuf = gzip.open(dir + '/' + str(fold) + '/' + ds_name, 'w')
+    for _, line in data:
+        f_shuf.write(line)
 
-def write_row(mod, row, mode):
-    summary_file = open(mod.summary_file_name, mode)
-    if mode == 'a':
-        summary_file.truncate()
-    summary_file.write( intersperse(row, '\t') + '\n')
-    summary_file.close()
-
-def write_result(mod, result):
-    write_row(mod, result.values(), 'a')
-
-def write_summary_header(mod):
-    write_row(mod, mod.sum_tmplt.keys(), 'w')
-
-def ds_files(ds_path):
+def ds_files(ds_path, num_ds):
     prevdir = os.getcwd()
     os.chdir(ds_path)
     dss = sorted(glob.glob('*.vw.gz'))
     os.chdir(prevdir)
+
+    if num_ds == -1 or num_ds > len(dss):
+        pass
+    else:
+        dss = dss[:num_ds]
+
     return dss
 
 def get_params_task(params_all):
@@ -306,72 +232,40 @@ def get_maj_error_mc(dataset_name):
     count_label = get_class_count(dataset_name)
     return 1 - (float(max(count_label.values())) / float(sum(count_label.values())))
 
-
-def get_maj_error_cs(dataset_name):
-    err_label = {}
-    size = 0
-    f = gzip.open(dataset_name, 'r')
-    for line in f:
-        size += 1
-        line_label = line.decode("utf-8").split('|')
-        for lc_pair in line_label[0].split():
-            label, cost = lc_pair.split(':')
-            if label not in err_label:
-                err_label[label] = 0
-            err_label[label] += float(cost)
-
-    return min(err_label.values()) / size
-
-def avg_error(mod):
-    return vw_output_extract(mod, 'average loss')
-
-def actual_var(mod):
-    return vw_output_extract(mod, 'Measured average variance')
-
-def ideal_var(mod):
-    return vw_output_extract(mod, 'Ideal average variance')
-
-def vw_output_extract(mod, pattern):
-    vw_output = open(mod.vw_output_filename, 'r')
-    vw_output_text = vw_output.read()
-
-    rgx_pattern = '.*'+pattern+' = ([\d]*.[\d]*)( h|)\n.*'
-    rgx = re.compile(rgx_pattern, flags=re.M)
-
-    errs = rgx.findall(vw_output_text)
-    if not errs:
-        avge = 0
-    else:
-        avge = float(errs[0][0])
-
-    vw_output.close()
-    return avge
-
-def main_loop(mod):
-    mod.summary_file_name = mod.results_path+str(mod.task_id)+'of'+str(mod.num_tasks)+'.sum'
-    mod.full_tmplt = FULL_TMPLT
-    mod.simp_map = SIMP_MAP
-    mod.sum_tmplt = SUM_TMPLT
-    mod.vw_out_tmplt = VW_OUT_TMPLT
-    write_summary_header(mod)
-    for mod.param in mod.config_task:
-        run_single_expt(mod)
-
 def create_dir(dir):
     if not os.path.exists(dir):
         os.makedirs(dir)
         import stat
         os.chmod(dir, os.stat(dir).st_mode | stat.S_IWOTH)
 
-def remove_suffix(filename):
+def rm_suffix(filename):
     return os.path.basename(filename).split('.')[0]
+
+def collect_result(mod):
+    vw_run_results = analyze_vw_out(mod.param, mod.vw_output_filename)
+    for vw_result in vw_run_results:
+        result_combined = merge_dicts(mod.param, vw_result)
+        result_formatted = format_setting(SUM_TMPLT, result_combined)
+        write_result(mod.summary_file_name, result_formatted)
+
+def main_loop(mod):
+    mod.summary_file_name = mod.results_path+str(mod.task_id)+'of'+str(mod.num_tasks)+'.sum'
+    write_row(mod.summary_file_name, SUM_TMPLT.keys(), 'w')
+
+    mod.full_tmplt = FULL_TMPLT
+    mod.simp_map = SIMP_MAP
+    mod.sum_tmplt = SUM_TMPLT
+    mod.vw_out_tmplt = VW_OUT_TMPLT
+    for mod.param in mod.config_task:
+        run_single_expt(mod)
+        collect_result(mod)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='vw job')
     parser.add_argument('task_id', type=int, help='task ID, between 0 and num_tasks - 1')
     parser.add_argument('num_tasks', type=int)
-    parser.add_argument('--results_dir', default='../../../figs/')
-    parser.add_argument('--ds_dir', default='../../../vwshuffled/')
+    parser.add_argument('--results_dir', default='../../output/')
+    parser.add_argument('--ds_dir', default='../../data/')
     parser.add_argument('--num_learning_rates', type=int, default=1)
     parser.add_argument('--num_datasets', type=int, default=-1)
     parser.add_argument('--num_folds', type=int, default=1)
@@ -383,7 +277,7 @@ if __name__ == '__main__':
     mod = model()
     mod.num_tasks = args.num_tasks
     mod.task_id = args.task_id
-    mod.vw_path = '../../vowpal_wabbit/vowpalwabbit/vw'
+    mod.vw_path = '../../vowpal_wabbit/build/vowpalwabbit/vw'
     mod.ds_path = args.ds_dir
     mod.results_path = args.results_dir
     mod.remove_vw_out = (args.remove_vw_out != 0)
@@ -392,23 +286,25 @@ if __name__ == '__main__':
     #This line handles multiple folds, where we assume that
     #folder 1/ includes all dataset files, and subsequent folders
     #includes the same set of filenames with different shufflings
-    mod.dss = ds_files(mod.ds_path + '1/')
-
-    print(len(mod.dss))
-
-    if args.num_datasets == -1 or args.num_datasets > len(mod.dss):
-        pass
-    else:
-        mod.dss = mod.dss[:args.num_datasets]
+    mod.dss = ds_files(mod.ds_path, args.num_datasets)
+    mod.learning_rates = gen_lrs(args.num_learning_rates)
+    mod.folds = range(1, args.num_folds+1)
 
     if args.task_id == 0:
         # To avoid race condition, use subtask 0 to create all folders
         create_dir(args.results_dir)
 
         # Create a subfolder for each dataset for storing the VW outputs.
+        # To avoid having too many files in the same folder
         for ds in mod.dss:
-            ds_no_suffix = remove_suffix(ds)
+            ds_no_suffix = rm_suffix(ds)
             create_dir(args.results_dir + ds_no_suffix + '/')
+
+
+        for fold in mod.folds:
+            create_dir(mod.ds_path + '/' + str(fold))
+            for ds in mod.dss:
+                shuffle(ds, mod.ds_path, fold)
 
         # Create a flag directory to mark the success of creating all folders.
         create_dir(flag_dir)
@@ -416,17 +312,12 @@ if __name__ == '__main__':
         while not os.path.exists(flag_dir):
             time.sleep(1)
 
-    if args.num_learning_rates <= 0:
-        mod.learning_rates = [0.5]
-    else:
-        mod.learning_rates = [gen_lr(i) for i in range(args.num_learning_rates)]
-
-    mod.folds = range(1, args.num_folds+1)
-
-    print('generating tasks..')
+    print(len(mod.dss))
     # Task-specific parameter settings (for running the tasks in parallel)
     # First generate all parameter settings
     # Then pick every num_tasks of them
+    print('generating tasks..')
+
     all_params = get_all_params(mod)
     mod.config_task = get_params_task(all_params)
     print('task ', str(mod.task_id), ' of ', str(mod.num_tasks), ':')

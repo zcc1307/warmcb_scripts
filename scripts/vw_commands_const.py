@@ -38,9 +38,9 @@ RESULT_TMPLT = \
 	('ideal_variance', 'iv', 0.0),
 	('last_lambda', 'll', 0.0),
     ('corruption', 'co', ''),
-    ('vw_output_name', 'von', ''),
-    ('central_lambda','ctl', 0.5)
+    ('vw_output_name', 'von', '')
 	]
+    #('central_lambda','ctl', 0.5)
 	#('optimal_approx', 'oa', False),
 	#('majority_approx', 'ma', False),
 SUMMARY_TMPLT = \
@@ -52,16 +52,20 @@ SUMMARY_TMPLT = \
 	'interaction_multiplier',
     'interaction',
     'inter_ws_size_ratio',
-    'corruption',
+    'corrupt_type_warm_start',
+    'corrupt_prob_warm_start',
 	'algorithm',
-    'explore_method',
+    'choices_lambda',
+    'epsilon',
 	'learning_rate',
-	'avg_error',
-	'actual_variance',
-	'ideal_variance',
-	'last_lambda',
-    'vw_output_name'
+	'avg_error'
 	]
+    #'explore_method',
+	#'actual_variance',
+	#'ideal_variance',
+	#'last_lambda',
+    #'vw_output_name'
+    #'interaction',
     #'lambda_scheme',
 	#'loss0',
 	#'loss1',
@@ -83,10 +87,13 @@ SUMMARY_TMPLT = \
 
 VW_OUTFILE_NAME_TMPLT = \
 	['fold',
+     'dataset',
 	 'warm_start_multiplier',
-     'corruption',
-     'explore_method',
+     'corrupt_prob_warm_start',
+     'corrupt_type_warm_start',
+     'epsilon',
 	 'algorithm',
+     'choices_lambda',
      'learning_rate']
  	 #'corrupt_prob_interaction',
  	 #'corrupt_prob_warm_start',
@@ -113,7 +120,7 @@ VW_RUN_TMPLT_OPT = \
  	[('data',''),
 	 ('progress',2.0),
 	 ('passes',0),
-	 #('oaa',0),
+	 ('oaa',0),
 	 ('cache_file','')]
 
 VW_RUN_TMPLT_MAJ = \
@@ -129,40 +136,31 @@ VW_RUN_TMPLT_WARMCB = \
 	 ('cb_type','mtr'),
 	 ('warm_start',0),
 	 ('interaction',0),
-	 ('corrupt_type_interaction',0),
-	 ('corrupt_prob_interaction',0.0),
 	 ('corrupt_type_warm_start',0),
 	 ('corrupt_prob_warm_start',0.0),
-	 ('warm_start_update',True),
-	 ('interaction_update',True),
 	 ('choices_lambda',0),
 	 ('lambda_scheme',1),
-	 ('warm_start_type',1),
 	 ('overwrite_label',1),
-	 ('validation_method',1),
-	 ('weighting_scheme',1),
 	 ('learning_rate',0.5),
 	 ('loss0', 0),
 	 ('loss1', 0),
 	 ('progress',2.0),
-     ('central_lambda',0.5)
+     ('epsilon', 0.0)
 	 ]
 
 foi_pat = '\d+(?:\.\d+)?'
 label_pat = '[a-zA-Z0-9]+'
 gen_pat = '[a-zA-Z0-9\.]+'
-VW_PROGRESS_PATTERN = '('+foi_pat+'\s+'+foi_pat+'\s+'+gen_pat+'\s+'+gen_pat+'\n'+ \
-			'\d+\.\d+\s+\d+\.\d+\s+\d+\s+\d+\.\d+\s+[a-zA-Z0-9]+\s+[a-zA-Z0-9]+\s+\d+\n)'
+VW_PROGRESS_PATTERN ='(\d+\.\d+)\s+(\d+\.\d+)\s+(\d+)\s+(\d+\.\d+)\s+([a-zA-Z0-9]+)\s+([a-zA-Z0-9]+)\s+(\d+)\n'
 
 
 VW_RESULT_TMPLT = \
 	{
+    'interaction_multiplier': 0,
 	'interaction': 0,
 	'inter_ws_size_ratio': 0,
 	'avg_error': 0.0,
-	'actual_variance': 0.0,
-	'ideal_variance': 0.0,
-	'last_lambda':0.0
+    'warm_start': 0
 	}
 
 FULL_TMPLT = OrderedDict([ (item[0], item[2]) for item in RESULT_TMPLT ])
