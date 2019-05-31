@@ -1,6 +1,6 @@
 # Warm contextual bandits - source code
 
-code written by Chicheng Zhang, in supplementary to the ICML 2019 paper: Chicheng Zhang, Alekh Agarwal, Hal Daume III, John Langford, Sahand Negahban, Warm starting contextual bandits: robustly combining supervised and bandit feedback](https://arxiv.org/pdf/1901.00301.pdf).
+code written by Chicheng Zhang, in supplementary to the ICML 2019 paper: Chicheng Zhang, Alekh Agarwal, Hal Daume III, John Langford, Sahand Negahban, [Warm starting contextual bandits: robustly combining supervised and bandit feedback](https://arxiv.org/pdf/1901.00301.pdf).
 
 ## Prerequisites:
 - Vowpal Wabbit prerequisites (see [here](https://github.com/VowpalWabbit/vowpal_wabbit/) "Prerequisite software" for details).
