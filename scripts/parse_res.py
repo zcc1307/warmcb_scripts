@@ -66,7 +66,7 @@ def analyze_vw_out(param, fn):
             if inter >= (1 - 1e-7) * grid_size * im and \
                inter <= (1 + 1e-7) * grid_size * im:
                 vw_result = VW_RESULT_TMPLT.copy()
-                vw_result['interaction_multiplier'] = inter
+                vw_result['interaction_multiplier'] = im
                 vw_result['interaction'] = inter
                 vw_result['inter_ws_size_ratio'] = im / wsm
                 vw_result['avg_error'] = float(avg_loss)

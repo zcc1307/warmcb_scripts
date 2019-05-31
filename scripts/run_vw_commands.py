@@ -10,7 +10,7 @@ from collections import OrderedDict
 from params_gen import get_all_params
 from vw_commands_const import VW_RUN_TMPLT_OPT, VW_RUN_TMPLT_MAJ, VW_RUN_TMPLT_WARMCB, \
   VW_PROGRESS_PATTERN, VW_RESULT_TMPLT, FULL_TMPLT, SIMP_MAP, SUM_TMPLT, VW_OUT_TMPLT
-from utils import intersperse, format_setting, replace_keys, merge_dicts
+from utils import intersperse, format_setting, replace_keys, merge_dicts, param_to_str
 import gzip
 import random
 from parse_res import write_row, write_result, analyze_vw_out
@@ -147,10 +147,6 @@ def execute_vw(mod):
         process.wait()
         f.close()
 
-def param_to_str(param):
-    param_list = [ str(k)+'={'+str(v) +'}' for k,v in param.items() ]
-    return intersperse(param_list, ',')
-
 def get_vw_out_filename(mod):
     # step 1: fill in vw output template
     param_formatted = format_setting(mod.vw_out_tmplt, mod.param)
@@ -177,11 +173,11 @@ def run_single_expt(mod):
     #    os.remove(mod.vw_output_filename)
 
 def shuffle(ds_name, dir, fold):
-    f = gzip.open(dir + '/' + ds_name, 'r')
+    f = gzip.open(dir + '/' + ds_name, 'rt')
     data = [(random.random(), line) for line in f]
     data.sort()
 
-    f_shuf = gzip.open(dir + '/' + str(fold) + '/' + ds_name, 'w')
+    f_shuf = gzip.open(dir + '/' + str(fold) + '/' + ds_name, 'wt')
     for _, line in data:
         f_shuf.write(line)
 

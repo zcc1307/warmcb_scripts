@@ -9,7 +9,7 @@ import argparse
 import numpy as np
 from collections import OrderedDict
 import math
-from run_vw_commands import param_to_str
+from utils import param_to_str
 import re
 from alg_const import make_header
 from cdfs import plot_all_cdfs
@@ -69,23 +69,23 @@ def plot_agg_all(mod, df):
                                   'warm_start_multiplier'])
 
 def plot_agg_all_eq(mod, df):
-    return plot_eq_iw(mod, all_results, ['epsilon'],
+    return plot_eq_iw(mod, df, ['epsilon'],
                                         ['corrupt_type_warm_start',
                                          'corrupt_prob_warm_start',
                                          'dataset',
                                          'warm_start_multiplier'])
 
 
-def plot_agg_corr_prob(mod, all_results):
-    return plot_bilevel(mod, all_results, ['corrupt_type_warm_start',
+def plot_agg_corr_prob(mod, df):
+    return plot_bilevel(mod, df, ['corrupt_type_warm_start',
                                            'inter_ws_size_ratio',
                                            'epsilon'],
                                            ['corr_prob_warm_start',
                                             'dataset',
                                             'warm_start_multiplier'])
 
-def plot_no_agg(mod, all_results):
-    return plot_bilevel(mod, all_results, ['corrupt_type_warm_start',
+def plot_no_agg(mod, df):
+    return plot_bilevel(mod, df, ['corrupt_type_warm_start',
                                            'corrupt_prob_warm_start',
                                            'inter_ws_size_ratio',
                                            'epsilon'],
@@ -104,14 +104,15 @@ def plot_eq_iw(mod, all_results, enum, agg):
            expt_dict = OrderedDict(zip(enum, list(expl)))
 
         header = make_header(expt_dict)
+        
         dir = mod.fulldir+param_to_str(expt_dict)+'/'
         if not os.path.exists(dir):
             os.makedirs(dir)
 
         for ratio, group_ratio in group_expl.groupby(['inter_ws_size_ratio']):
-           unnorm_scores, norm_scores, lrs, lambdas, sizes = get_scores(group_ratio, agg)
-           ratio_lens.append(len(list(norm_scores.values())[0]))
-           insert_scores(norm_scores_all, norm_scores)
+            unnorm_scores, norm_scores, sizes = get_scores(group_ratio, agg)
+            ratio_lens.append(len(list(norm_scores.values())[0]))
+            insert_scores(norm_scores_all, norm_scores)
 
         num_ratios = len(ratio_lens)
         iw = []
@@ -133,6 +134,7 @@ def plot_bilevel(mod, all_results, enum, agg):
             expt_dict = OrderedDict(zip(enum, list(expt)))
 
         header = make_header(expt_dict)
+
         dir = mod.fulldir+param_to_str(expt_dict)+'/'
         if not os.path.exists(dir):
             os.makedirs(dir)
@@ -143,11 +145,11 @@ def plot_bilevel(mod, all_results, enum, agg):
             plot_all_cdfs(norm_scores, dir, header)
 
 
-def insert_scores(scores_all, scores_new, mode):
+def insert_scores(scores_all, scores_new):
     for k, v in scores_new.items():
         if k not in scores_all.keys():
             scores_all[k] = []
-        scores_all[k].append(v)
+        scores_all[k] += v
 
 def get_scores(results, gr):
     norm_scores = None
@@ -403,8 +405,7 @@ if __name__ == '__main__':
     propag_results = propagate(tuned_results)
     normed = norm_scores(propag_results)
     renamed = rename_alg(normed)
-
-    filt_results = filter_results(mod.filter, normed)
+    filt_results = filter_results(mod.filter, renamed)
 
     if args.agg_mode == 'all':
         plot_agg_all(mod, filt_results)

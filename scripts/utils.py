@@ -26,3 +26,7 @@ def merge_dicts(x, y):
     z = x.copy()
     z.update(y)
     return z
+
+def param_to_str(param):
+    param_list = [ str(k)+'={'+str(v) +'}' for k,v in param.items() ]
+    return intersperse(param_list, ',')

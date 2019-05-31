@@ -4,7 +4,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as plt
 import pylab
-from alg_const import noise_type_str, alg_str, alg_color_style, alg_index, make_header
+from alg_const import alg_str, alg_color_style, alg_index, make_header
 import numpy as np
 
 def order_legends(indices):
