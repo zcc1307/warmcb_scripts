@@ -9,6 +9,7 @@ The relevant part of VW sourcecode is at [warm_cb.cc](https://github.com/VowpalW
 - Python >= 3.6.5
 - matplotlib >= 2.2.2
 - seaborn >= 0.9.0
+- openml >= 0.8.0
 
 ## Includes:
 
